@@ -12,10 +12,10 @@ interface EmisorState {
 
 export const useEmisorStore = create<EmisorState>()(
   persist(
-    (set) => ({
+    (set: any) => ({
       emisorId: null,
       emisorName: null,
-      setEmisor: (id, name) => {
+      setEmisor: (id: string, name: string) => {
         localStorage.setItem('dte_emisor_id', id);
         set({ emisorId: id, emisorName: name });
       },
@@ -27,5 +27,5 @@ export const useEmisorStore = create<EmisorState>()(
     {
       name: 'dte-emisor-storage',
     }
-  )
+  ) as any
 );

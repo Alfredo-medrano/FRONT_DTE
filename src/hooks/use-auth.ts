@@ -13,11 +13,11 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set: any) => ({
       apiKey: null,
       adminKey: null,
       isReady: false,
-      setKeys: (apiKey, adminKey) => {
+      setKeys: (apiKey: string, adminKey: string) => {
         // Sync to localStorage for simple fetch client access
         localStorage.setItem('dte_api_key', apiKey);
         localStorage.setItem('dte_admin_key', adminKey);
@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'dte-auth-storage',
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state: AuthState | undefined) => {
         if (state) state.isReady = true;
       },
     }

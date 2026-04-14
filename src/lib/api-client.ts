@@ -33,11 +33,8 @@ export const fetchClient = async <T>(
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
 
-  if (apiKey && endpoint.includes('/api/dte/v2')) {
+  if (apiKey) {
     headers.set('Authorization', `Bearer ${apiKey}`);
-  }
-  if (adminKey && endpoint.includes('/admin')) {
-    headers.set('X-Admin-Key', adminKey);
   }
   if (emisorId) {
     headers.set('X-Emisor-Id', emisorId);

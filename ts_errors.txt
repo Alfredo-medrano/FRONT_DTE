@@ -1,0 +1,41 @@
+src/app/(dashboard)/admin/emisores/page.tsx(90,25): error TS2339: Property 'map' does not exist on type '{}'.
+src/app/(dashboard)/dashboard/page.tsx(156,23): error TS2339: Property 'map' does not exist on type '{}'.
+src/app/(dashboard)/facturas/nueva/page.tsx(25,5): error TS2322: Type 'Resolver<{ receptor: { nombre: string; tipoDocumento?: "03" | "36" | "13" | "37" | undefined; numDocumento?: string | undefined; nit?: string | undefined; nrc?: string | null | undefined; codActividad?: string | ... 1 more ... | undefined; ... 4 more ...; correo?: string | undefined; }; items: { ...; }[]; tipoDte?: ...' is not assignable to type 'Resolver<{ tipoDte: "01" | "03" | "14" | "05" | "06" | "11"; receptor: { nombre: string; tipoDocumento?: "03" | "36" | "13" | "37" | undefined; numDocumento?: string | undefined; nit?: string | undefined; ... 6 more ...; correo?: string | undefined; }; items: { ...; }[]; condicionOperacion: number; observaciones?: s...'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ tipoDte: "01" | "03" | "14" | "05" | "06" | "11"; receptor: { nombre: string; tipoDocumento?: "03" | "36" | "13" | "37" | undefined; numDocumento?: string | undefined; nit?: string | undefined; ... 6 more ...; correo?: string | undefined; }; items: { ...; }[]; condicionOperacion: number; observacio...' is not assignable to type 'ResolverOptions<{ receptor: { nombre: string; tipoDocumento?: "03" | "36" | "13" | "37" | undefined; numDocumento?: string | undefined; nit?: string | undefined; nrc?: string | null | undefined; codActividad?: string | ... 1 more ... | undefined; ... 4 more ...; correo?: string | undefined; }; items: { ...; }[]; tip...'.
+      Type '"01" | "03" | "14" | "05" | "06" | "11" | undefined' is not assignable to type '"01" | "03" | "14" | "05" | "06" | "11"'.
+        Type 'undefined' is not assignable to type '"01" | "03" | "14" | "05" | "06" | "11"'.
+src/app/(dashboard)/facturas/nueva/page.tsx(63,43): error TS2339: Property 'codigoGeneracion' does not exist on type '{}'.
+src/app/(dashboard)/facturas/page.tsx(22,22): error TS2339: Property 'data' does not exist on type '{}'.
+src/components/layout/emisor-selector.tsx(43,28): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/components/layout/header.tsx(50,32): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/hooks/use-emisor.ts(14,3): error TS2345: Argument of type 'StateCreator<{ emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }, [], [["zustand/persist", { emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }]]>' is not assignable to parameter of type 'StateCreator<EmisorState, [], [["zustand/persist", { emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }]]>'.
+  Type 'StateCreator<{ emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }, [], [["zustand/persist", { emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }]]>' is not assignable to type '(setState: { (partial: EmisorState | Partial<EmisorState> | ((state: EmisorState) => EmisorState | Partial<EmisorState>), replace?: false | undefined): void; (state: EmisorState | ((state: EmisorState) => EmisorState), replace: true): void; }, getState: () => EmisorState, store: StoreApi<...>) => EmisorState'.
+    Types of parameters 'getState' and 'getState' are incompatible.
+      Type '() => EmisorState' is not assignable to type '() => { emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }'.
+        Call signature return types 'EmisorState' and '{ emisorId: null; emisorName: null; setEmisor: (id: string, name: string) => void; clearEmisor: () => void; }' are incompatible.
+          The types of 'emisorId' are incompatible between these types.
+            Type 'string | null' is not assignable to type 'null'.
+              Type 'string' is not assignable to type 'null'.
+src/stores/crm-store.ts(39,3): error TS2345: Argument of type 'StateCreator<{ clientes: never[]; cards: never[]; addCliente: (cli: Omit<Cliente, "id" | "createdAt">) => any; updateCliente: (id: string, cli: Partial<Cliente>) => any; ... 4 more ...; moveCard: (id: string, toColumn: "Prospecto" | ... 3 more ... | "Cerrado") => any; }, [], [...]>' is not assignable to parameter of type 'StateCreator<CRMStore, [], [["zustand/persist", { clientes: never[]; cards: never[]; addCliente: (cli: Omit<Cliente, "id" | "createdAt">) => any; updateCliente: (id: string, cli: Partial<...>) => any; ... 4 more ...; moveCard: (id: string, toColumn: "Prospecto" | ... 3 more ... | "Cerrado") => any; }]]>'.
+  Type 'StateCreator<{ clientes: never[]; cards: never[]; addCliente: (cli: Omit<Cliente, "id" | "createdAt">) => any; updateCliente: (id: string, cli: Partial<Cliente>) => any; ... 4 more ...; moveCard: (id: string, toColumn: "Prospecto" | ... 3 more ... | "Cerrado") => any; }, [], [...]>' is not assignable to type '(setState: { (partial: CRMStore | Partial<CRMStore> | ((state: CRMStore) => CRMStore | Partial<CRMStore>), replace?: false | undefined): void; (state: CRMStore | ((state: CRMStore) => CRMStore), replace: true): void; }, getState: () => CRMStore, store: StoreApi<...>) => CRMStore'.
+    Types of parameters 'getState' and 'getState' are incompatible.
+      Type '() => CRMStore' is not assignable to type '() => { clientes: never[]; cards: never[]; addCliente: (cli: Omit<Cliente, "id" | "createdAt">) => any; updateCliente: (id: string, cli: Partial<Cliente>) => any; ... 4 more ...; moveCard: (id: string, toColumn: "Prospecto" | ... 3 more ... | "Cerrado") => any; }'.
+        Call signature return types 'CRMStore' and '{ clientes: never[]; cards: never[]; addCliente: (cli: Omit<Cliente, "id" | "createdAt">) => any; updateCliente: (id: string, cli: Partial<Cliente>) => any; ... 4 more ...; moveCard: (id: string, toColumn: "Prospecto" | ... 3 more ... | "Cerrado") => any; }' are incompatible.
+          The types of 'clientes' are incompatible between these types.
+            Type 'Cliente[]' is not assignable to type 'never[]'.
+              Type 'Cliente' is not assignable to type 'never'.
+src/stores/crm-store.ts(43,33): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(46,40): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(47,38): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/stores/crm-store.ts(49,35): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(50,41): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/stores/crm-store.ts(52,31): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(55,41): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(56,32): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/stores/crm-store.ts(58,32): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(59,35): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/stores/crm-store.ts(61,40): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/stores/crm-store.ts(62,32): error TS7006: Parameter 'c' implicitly has an 'any' type.
