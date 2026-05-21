@@ -1,8 +1,9 @@
+import Decimal from 'decimal.js';
 import { TIPOS_DTE, TASA_IVA, TASA_RETENCION_RENTA, CODIGO_TRIBUTO_IVA } from './constants';
 
-export const redondear = (valor: number, decimales = 2) => {
-  const factor = Math.pow(10, decimales);
-  return Math.round(valor * factor) / factor;
+export const redondear = (valor: number | Decimal, decimales = 2) => {
+  if (valor === undefined || valor === null) return 0;
+  return new Decimal(valor).toDecimalPlaces(decimales, Decimal.ROUND_HALF_UP).toNumber();
 };
 
 export function numeroALetras(numero: number): string {
@@ -45,39 +46,39 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
   const tipoItem = item.tipoItem || 1;
   const precioIncluyeIva = ['01', '14', '11'].includes(tipoDte) ? (tipoDte === '01') : false; // Simplificado
 
-  const cantidad = parseFloat(item.cantidad);
-  const precioUnitario = parseFloat(item.precioUnitario);
-  const descuento = parseFloat(item.descuento || 0);
+  const cantidad = new Decimal(item.cantidad || 0);
+  const precioUnitario = new Decimal(item.precioUnitario || item.precioUni || 0);
+  const descuento = new Decimal(item.descuento || item.montoDescu || 0);
 
-  const montoBruto = cantidad * precioUnitario;
-  const montoNeto = montoBruto - descuento;
+  const montoBruto = cantidad.mul(precioUnitario);
+  const montoNeto = montoBruto.sub(descuento);
 
   let precioUni, ventaGravada, ivaItem;
 
   if (precioIncluyeIva) {
       precioUni = precioUnitario;
-      ventaGravada = redondear(montoNeto, 2);
-      ivaItem = redondear(montoNeto / (1 + TASA_IVA) * TASA_IVA, 2);
+      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      const divisor = new Decimal(1).add(TASA_IVA);
+      ivaItem = montoNeto.div(divisor).mul(TASA_IVA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   } else if (tipoDte === '14' || tipoDte === '11') {
       precioUni = precioUnitario;
-      ventaGravada = redondear(montoNeto, 2);
-      ivaItem = 0.00;
+      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ivaItem = new Decimal(0);
   } else {
       precioUni = precioUnitario;
-      ventaGravada = redondear(montoNeto, 2);
-      ivaItem = redondear(montoNeto * TASA_IVA, 2);
+      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ivaItem = montoNeto.mul(TASA_IVA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   }
 
   // DTE-15 (CD): campo donacion en lugar de ventaGravada/ivaItem
   if (tipoDte === '15') {
-    const montoNeto15 = parseFloat(item.cantidad || 1) * parseFloat(item.precioUnitario || 0) - parseFloat(item.descuento || 0);
     return {
       numItem,
       tipoItem,
-      cantidad: redondear(parseFloat(item.cantidad || 1), 8),
-      precioUni: redondear(parseFloat(item.precioUnitario || 0), 2),
-      montoDescu: redondear(parseFloat(item.descuento || 0), 2),
-      donacion: redondear(montoNeto15, 2),
+      cantidad: cantidad.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toNumber(),
+      precioUni: precioUni.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+      montoDescu: descuento.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+      donacion: montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
       ventaGravada: 0,
       ivaItem: 0,
     };
@@ -86,12 +87,12 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
   return {
     numItem,
     tipoItem,
-    cantidad: redondear(cantidad, 8),
-    precioUni: redondear(precioUni, 2),
-    montoDescu: redondear(descuento, 2),
-    ventaGravada,
-    compra: tipoDte === '14' ? ventaGravada : 0,
-    ivaItem
+    cantidad: cantidad.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toNumber(),
+    precioUni: precioUni.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+    montoDescu: descuento.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+    ventaGravada: ventaGravada.toNumber(),
+    compra: tipoDte === '14' ? ventaGravada.toNumber() : 0,
+    ivaItem: ivaItem.toNumber()
   };
 };
 
@@ -99,75 +100,79 @@ export const calcularResumenFactura = (lineas: any[], condicionOperacion = 1, ti
   const usaTributos = ['03', '05', '06'].includes(tipoDte);
   const precioIncluyeIva = tipoDte === '01';
 
-  let totalNoSuj = 0, totalExenta = 0, totalGravada = 0, totalDescuento = 0, totalIva = 0;
+  let totalNoSuj = new Decimal(0);
+  let totalExenta = new Decimal(0);
+  let totalGravada = new Decimal(0);
+  let totalDescuento = new Decimal(0);
+  let totalIva = new Decimal(0);
 
   lineas.forEach(linea => {
       if (tipoDte === '14') {
-          totalGravada += linea.compra || 0;
+          totalGravada = totalGravada.add(linea.compra || 0);
       } else if (tipoDte === '15') {
           // CD: acumular campo donacion
-          totalGravada += linea.donacion || 0;
+          totalGravada = totalGravada.add(linea.donacion || 0);
       } else {
-          totalGravada += linea.ventaGravada || 0;
-          totalIva += linea.ivaItem || 0;
+          totalGravada = totalGravada.add(linea.ventaGravada || 0);
+          totalIva = totalIva.add(linea.ivaItem || 0);
       }
-      totalDescuento += linea.montoDescu || 0;
+      totalDescuento = totalDescuento.add(linea.montoDescu || 0);
   });
 
-  totalGravada = redondear(totalGravada);
-  totalDescuento = redondear(totalDescuento);
+  totalGravada = totalGravada.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  totalDescuento = totalDescuento.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-  if (usaTributos && totalIva === 0) {
-      totalIva = redondear(totalGravada * TASA_IVA);
+  if (usaTributos && totalIva.isZero()) {
+      totalIva = totalGravada.mul(TASA_IVA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   } else {
-      totalIva = redondear(totalIva);
+      totalIva = totalIva.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   }
 
-  const subTotal = redondear(totalNoSuj + totalExenta + totalGravada);
+  const subTotal = totalNoSuj.add(totalExenta).add(totalGravada).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
   // CD (15): resumen de donación
   if (tipoDte === '15') {
       return {
-          totalDonado: redondear(totalGravada),
-          totalDescu: totalDescuento,
-          totalPagar: redondear(totalGravada),
+          totalDonado: totalGravada.toNumber(),
+          totalDescu: totalDescuento.toNumber(),
+          totalPagar: totalGravada.toNumber(),
           condicionOperacion,
       };
   }
 
   if (tipoDte === '14') {
-      const reteRenta = redondear(totalGravada * TASA_RETENCION_RENTA);
-      const montoTotalOperacion = redondear(subTotal - reteRenta);
+      const reteRenta = totalGravada.mul(TASA_RETENCION_RENTA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      const montoTotalOperacion = subTotal.sub(reteRenta).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
       return {
-          totalCompra: totalGravada,
-          totalDescu: totalDescuento,
-          subTotal,
-          reteRenta,
-          totalPagar: montoTotalOperacion,
+          totalCompra: totalGravada.toNumber(),
+          totalDescu: totalDescuento.toNumber(),
+          subTotal: subTotal.toNumber(),
+          reteRenta: reteRenta.toNumber(),
+          totalPagar: montoTotalOperacion.toNumber(),
           condicionOperacion
       };
   }
 
-  let montoTotalOperacion, reteRenta = 0.00;
+  let montoTotalOperacion, reteRenta = new Decimal(0);
 
   if (precioIncluyeIva) {
       montoTotalOperacion = subTotal;
   } else if (tipoDte === '11') {
       montoTotalOperacion = subTotal;
   } else {
-      montoTotalOperacion = redondear(subTotal + totalIva);
+      montoTotalOperacion = subTotal.add(totalIva).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   }
 
-  const totalPagar = redondear(montoTotalOperacion);
+  const totalPagar = montoTotalOperacion.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
   return {
-      subTotalVentas: subTotal,
-      totalDescu: totalDescuento,
-      subTotal,
-      montoTotalOperacion,
-      totalPagar,
-      totalIva,
-      totalLetras: numeroALetras(totalPagar),
+      subTotalVentas: subTotal.toNumber(),
+      totalDescu: totalDescuento.toNumber(),
+      subTotal: subTotal.toNumber(),
+      montoTotalOperacion: montoTotalOperacion.toNumber(),
+      totalPagar: totalPagar.toNumber(),
+      totalIva: totalIva.toNumber(),
+      totalLetras: numeroALetras(totalPagar.toNumber()),
       condicionOperacion
   };
 };

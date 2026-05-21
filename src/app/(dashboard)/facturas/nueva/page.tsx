@@ -75,6 +75,7 @@ export default function NuevaFacturaPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Preparando datos de facturación...');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<FacturaFormValues>({
@@ -134,9 +135,27 @@ export default function NuevaFacturaPage() {
 
   // ── Submit ───────────────────────────────────────────────
   const onSubmit = async (data: FacturaFormValues) => {
+    let progressTimer: NodeJS.Timeout | null = null;
+    let progressTimer2: NodeJS.Timeout | null = null;
+    let progressTimer3: NodeJS.Timeout | null = null;
+
     try {
       setIsSubmitting(true);
       setSubmitError(null);
+      setLoadingMessage('Preparando datos de facturación...');
+
+      // Simular progreso de firma y transmisión para la UI
+      progressTimer = setTimeout(() => {
+        setLoadingMessage('Firmando digitalmente el documento (JWS)...');
+      }, 900);
+
+      progressTimer2 = setTimeout(() => {
+        setLoadingMessage('Transmitiendo al Ministerio de Hacienda...');
+      }, 1900);
+
+      progressTimer3 = setTimeout(() => {
+        setLoadingMessage('Guardando y registrando documento fiscal...');
+      }, 3100);
 
       const payload: any = { ...data };
 
@@ -219,8 +238,23 @@ export default function NuevaFacturaPage() {
         body: JSON.stringify(payload),
       });
 
-      router.push(`/facturas/${(res.datos as any)?.codigoGeneracion || ''}`);
+      if (progressTimer) clearTimeout(progressTimer);
+      if (progressTimer2) clearTimeout(progressTimer2);
+      if (progressTimer3) clearTimeout(progressTimer3);
+
+      setLoadingMessage(res.enCola ? 'Guardada en cola con éxito...' : '¡Documento emitido con éxito!');
+
+      const targetCodigo = (res.datos as any)?.codigoGeneracion || res.codigoGeneracion || '';
+      
+      // Delay de 500ms para que el usuario perciba el éxito de forma elegante
+      setTimeout(() => {
+        router.push(`/facturas/${targetCodigo}`);
+      }, 500);
     } catch (error: any) {
+      if (progressTimer) clearTimeout(progressTimer);
+      if (progressTimer2) clearTimeout(progressTimer2);
+      if (progressTimer3) clearTimeout(progressTimer3);
+
       let errorMsg =
         error.resDetails?.observaciones ||
         error.resDetails?.error ||
@@ -233,7 +267,6 @@ export default function NuevaFacturaPage() {
         errorMsg = `${errorMsg}. Detalles: ${backendErrors}`;
       }
       setSubmitError(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -1074,6 +1107,35 @@ export default function NuevaFacturaPage() {
               </Card>
         </div>
       </form>
+      
+      {/* Premium Glassmorphic Loading Screen Overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center text-white scale-in flex flex-col items-center gap-6">
+            <div className="relative flex items-center justify-center">
+              {/* Pulsing glow under loader */}
+              <div className="absolute h-20 w-20 rounded-full bg-primary/20 animate-pulse blur-xl" />
+              {/* Outer rotating ring */}
+              <div className="h-16 w-16 rounded-full border-4 border-t-primary border-r-primary border-b-transparent border-l-transparent animate-spin" />
+              {/* Inner document icon */}
+              <div className="absolute h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary animate-bounce" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold tracking-tight">Procesando Documento</h3>
+              <p className="text-sm text-gray-300 min-h-[40px] flex items-center justify-center px-4 font-medium transition-all duration-300">
+                {loadingMessage}
+              </p>
+            </div>
+            {/* Progress bar wrapper */}
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden border border-white/5">
+              <div className="bg-gradient-to-r from-primary to-blue-400 h-full rounded-full animate-[pulse_1.5s_infinite]" style={{ width: '75%' }} />
+            </div>
+            <p className="text-[10px] text-gray-400">Por favor, no recargues la página ni cierres el navegador.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
