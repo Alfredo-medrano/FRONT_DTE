@@ -18,6 +18,8 @@ export class ApiError extends Error {
   }
 }
 
+import { useAuthStore } from '@/hooks/use-auth';
+
 const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 };
@@ -26,27 +28,27 @@ export const fetchClient = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const apiKey = typeof window !== 'undefined' ? localStorage.getItem('dte_api_key') : null;
-  const adminKey = typeof window !== 'undefined' ? localStorage.getItem('dte_admin_key') : null;
-  const emisorId = typeof window !== 'undefined' ? localStorage.getItem('dte_emisor_id') : null;
-
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
 
+  const { apiKey } = useAuthStore.getState();
   if (apiKey) {
     headers.set('Authorization', `Bearer ${apiKey}`);
-  }
-  if (emisorId) {
-    headers.set('X-Emisor-Id', emisorId);
   }
 
   const url = `${getBaseUrl()}${endpoint}`;
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { ...options, credentials: 'include', headers });
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
+      // Auto logout en caso de 401 (token expirado o faltante)
+      if (res.status === 401 && typeof window !== 'undefined' && !url.includes('/auth/login')) {
+        useAuthStore.getState().clearKeys();
+        window.location.href = '/setup';
+      }
+
       throw new ApiError(
         data?.mensaje || data?.error || 'Error en la petición API',
         res.status,

@@ -23,6 +23,8 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
       ...dteRes.dte,
       status: dteRes.local?.status || 'SIN ESTADO',
       selloRecibido: dteRes.local?.selloRecibido,
+      fecEmi: dteRes.dte?.identificacion?.fecEmi,
+      horEmi: dteRes.dte?.identificacion?.horEmi,
       fechaEmision: dteRes.local?.fechaEmision || dteRes.dte?.identificacion?.fecEmi,
       numeroControl: dteRes.local?.numeroControl || dteRes.dte?.identificacion?.numeroControl,
       codigoGeneracion: dteRes.dte?.identificacion?.codigoGeneracion || codigo,
@@ -95,7 +97,7 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
               </div>
               <div>
                 <span className="text-muted-foreground block">Fecha de Emisión</span>
-                <span>{new Date(dte.fechaEmision).toLocaleString()}</span>
+                <span>{dte.fecEmi && dte.horEmi ? `${dte.fecEmi} ${dte.horEmi}` : new Date(dte.fechaEmision).toLocaleString()}</span>
               </div>
               <div>
                 <span className="text-muted-foreground block">Sello Hacienda</span>

@@ -40,7 +40,7 @@ export function numeroALetras(numero: number): string {
   return `${texto} ${decimalesStr}/100 USD`;
 }
 
-// NOTE: Para el form builder, calculamos líneas y luego resumen
+// Para el form builder, calculamos líneas y luego resumen
 export const calcularLineaProducto = (item: any, numItem: number, tipoDte: string = '01') => {
   const tipoItem = item.tipoItem || 1;
   const precioIncluyeIva = ['01', '14', '11'].includes(tipoDte) ? (tipoDte === '01') : false; // Simplificado

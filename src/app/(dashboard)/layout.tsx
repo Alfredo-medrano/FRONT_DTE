@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/use-auth';
+import { useIdleTimeout } from '@/hooks/use-idle-timeout';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 
@@ -14,6 +15,9 @@ export default function DashboardLayout({
   const isReady = useAuthStore((state) => state.isReady);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+
+  // Auto-logout: cerrar sesión tras 5 minutos sin actividad
+  useIdleTimeout(5);
 
   useEffect(() => {
     setMounted(true);

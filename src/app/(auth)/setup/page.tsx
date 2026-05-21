@@ -158,7 +158,7 @@ export default function SetupPage() {
 
         <p className="text-center text-[11px] text-muted-foreground/60">
           Tus credenciales se validan directamente con el Ministerio de Hacienda
-          y se almacenan con encriptación AES-256.
+          y se almacenan con encriptación AES-256-GCM.
         </p>
       </div>
     </div>

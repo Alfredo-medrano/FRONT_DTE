@@ -562,7 +562,7 @@ export default function RegistroPage() {
       {/* ── Footer ───────────────────────────── */}
       <p className="mt-6 text-center text-xs text-muted-foreground max-w-md">
         Al registrarte, tus credenciales del Ministerio de Hacienda se validarán en tiempo real y se almacenarán
-        con encriptación AES-256-CBC. Cumplimos con ISO 27001.
+        con encriptación AES-256-GCM. Cumplimos con ISO 27001.
       </p>
     </div>
   );

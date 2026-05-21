@@ -10,17 +10,21 @@ interface EmisorState {
   clearEmisor: () => void;
 }
 
+/**
+ * Store de emisor seleccionado.
+ * Zustand persist ya gestiona localStorage automáticamente.
+ * SECURITY FIX: Eliminado acceso directo a localStorage que
+ * causaba duplicación de estado y posible desincronización.
+ */
 export const useEmisorStore = create<EmisorState>()(
   persist(
     (set: any) => ({
       emisorId: null,
       emisorName: null,
       setEmisor: (id: string, name: string) => {
-        localStorage.setItem('dte_emisor_id', id);
         set({ emisorId: id, emisorName: name });
       },
       clearEmisor: () => {
-        localStorage.removeItem('dte_emisor_id');
         set({ emisorId: null, emisorName: null });
       },
     }),

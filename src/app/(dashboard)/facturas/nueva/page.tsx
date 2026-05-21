@@ -268,7 +268,7 @@ export default function NuevaFacturaPage() {
   const labelDocumento = esCD ? 'Comprobante de Donación' : 'Factura / Documento';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
@@ -317,7 +317,9 @@ export default function NuevaFacturaPage() {
         </div>
       )}
 
-      <form onSubmit={form.handleSubmit(onSubmit as any)}>
+      <form onSubmit={form.handleSubmit(onSubmit as any)} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* COLUMNA IZQUIERDA: PASOS DEL FORMULARIO */}
+        <div className="lg:col-span-2 space-y-6">
         {/* ═════════════════════════════════════════════════ */}
         {/* PASO 1: TIPO DTE + RECEPTOR / DONANTE / RECEPTOR */}
         {/* ═════════════════════════════════════════════════ */}
@@ -711,12 +713,6 @@ export default function NuevaFacturaPage() {
                 </>
               )}
             </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button type="button" onClick={nextStep}>
-                Siguiente
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </CardFooter>
           </Card>
         )}
 
@@ -853,16 +849,6 @@ export default function NuevaFacturaPage() {
                 </p>
               )}
             </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep(1)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Atrás
-              </Button>
-              <Button type="button" onClick={nextStep}>
-                Siguiente
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </CardFooter>
           </Card>
         )}
 
@@ -979,13 +965,19 @@ export default function NuevaFacturaPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        )}
+        </div>
 
+        {/* COLUMNA DERECHA: PANEL STICKY DE TOTALES Y BOTONES */}
+        <div className="lg:col-span-1 sticky top-6">
               {/* ── Totales ──────────────────────── */}
-              <Card className="md:col-span-2 h-fit sticky top-20">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{esCD ? 'Total Donado' : 'Totales'}</CardTitle>
+              <Card className="border shadow-lg">
+                <CardHeader className="pb-3 bg-muted/30">
+                  <CardTitle className="text-base">{esCD ? 'Total Donado' : 'Totales de Transacción'}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-4">
                   <div className="space-y-3">
                     {/* Subtotal / compra / donado */}
                     <div className="flex justify-between text-sm">
@@ -1024,9 +1016,9 @@ export default function NuevaFacturaPage() {
                       </div>
                     )}
 
-                    <div className="h-px w-full bg-border" />
+                    <div className="h-px w-full bg-border my-4" />
 
-                    <div className="flex justify-between font-bold text-xl">
+                    <div className="flex justify-between font-bold text-2xl">
                       <span>Total</span>
                       <span className="text-primary">
                         ${(
@@ -1038,40 +1030,49 @@ export default function NuevaFacturaPage() {
                     </div>
 
                     {(resumen as any)?.totalLetras && (
-                      <p className="text-[10px] text-muted-foreground border-t pt-2 uppercase">
+                      <p className="text-[10px] text-muted-foreground border-t pt-2 uppercase text-center mt-2">
                         {(resumen as any).totalLetras}
                       </p>
                     )}
                   </div>
                 </CardContent>
-                <CardFooter className="flex flex-col gap-3 pt-2">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
-                    size="lg"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Enviando a Hacienda...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {esCD ? 'Emitir Comprobante' : 'Emitir Documento'}
-                      </>
-                    )}
-                  </Button>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => setStep(2)}>
-                    <ArrowLeft className="h-4 w-4 mr-1.5" />
-                    Volver
-                  </Button>
+
+                <CardFooter className="flex flex-col gap-3 pb-6 bg-muted/10 border-t pt-4">
+                  {step < 3 ? (
+                    <Button type="button" onClick={nextStep} className="w-full h-11" size="lg">
+                      Siguiente
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
+                      size="lg"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          {esCD ? 'Emitir Donación' : 'Emitir Factura'}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  
+                  {step > 1 && (
+                    <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={() => setStep(step - 1)}>
+                      <ArrowLeft className="h-4 w-4 mr-1.5" />
+                      Volver
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
-            </div>
-          </div>
-        )}
+        </div>
       </form>
     </div>
   );
