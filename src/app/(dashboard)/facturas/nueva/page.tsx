@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/lib/catalogos-mh';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -77,6 +78,7 @@ export default function NuevaFacturaPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Preparando datos de facturación...');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sumarIvaAutomatico, setSumarIvaAutomatico] = useState(false);
 
   const form = useForm<FacturaFormValues>({
     resolver: zodResolver(crearFacturaSchema as any),
@@ -121,9 +123,18 @@ export default function NuevaFacturaPage() {
   const esFiscal = esCCF || esNR || esNCND;
 
   // ── Cálculos en tiempo real ──────────────────────────────
-  const lineasCalculadas = watchAll.items.map((item, idx) =>
-    calcularLineaProducto(item, idx + 1, tipoDte)
-  );
+  const lineasCalculadas = watchAll.items.map((item, idx) => {
+    // Si es Factura Consumidor Final (01) y el usuario indicó que sus precios NO incluyen IVA,
+    // multiplicamos el precioUnitario por 1.13 solo para el cálculo de preview.
+    if (tipoDte === '01' && sumarIvaAutomatico) {
+      const itemConIva = {
+        ...item,
+        precioUnitario: parseFloat((item.precioUnitario * 1.13).toFixed(8)),
+      };
+      return calcularLineaProducto(itemConIva, idx + 1, tipoDte);
+    }
+    return calcularLineaProducto(item, idx + 1, tipoDte);
+  });
   const resumen = calcularResumenFactura(lineasCalculadas, watchAll.condicionOperacion, tipoDte);
 
   // ── Municipios filtrados ─────────────────────────────────
@@ -158,6 +169,14 @@ export default function NuevaFacturaPage() {
       }, 3100);
 
       const payload: any = { ...data };
+
+      // ── Sumar IVA a precios unitarios si el usuario indicó que sus precios son sin IVA ──
+      if (payload.tipoDte === '01' && sumarIvaAutomatico) {
+        payload.items = payload.items.map((item: any) => ({
+          ...item,
+          precioUnitario: parseFloat((item.precioUnitario * 1.13).toFixed(8)),
+        }));
+      }
 
       // ── Limpiar receptor según tipo DTE ────────────────
       if (payload.tipoDte === '01') {
@@ -294,7 +313,9 @@ export default function NuevaFacturaPage() {
   };
 
   const tipoActual = DTE_USUARIO.find((t) => t.codigo === tipoDte) || TIPOS_DTE.find((t) => t.codigo === tipoDte);
-  const precioLabel = tipoDte === '01' ? 'Precio (IVA incluido)' : esCD ? 'Valor Donado' : 'Precio (sin IVA)';
+  const precioLabel = tipoDte === '01'
+    ? (sumarIvaAutomatico ? 'Precio (sin IVA)' : 'Precio (IVA incluido)')
+    : esCD ? 'Valor Donado' : 'Precio (sin IVA)';
 
   // ── Etiquetas dinámicas según tipo ──────────────────────
   const labelReceptor = esCD ? 'Donante (opcional)' : esFEX ? 'Receptor Internacional' : esFSE ? 'Sujeto Excluido' : 'Datos del Cliente';
@@ -754,7 +775,7 @@ export default function NuevaFacturaPage() {
         {/* ════════════════════════════════════════════════ */}
         {step === 2 && (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
@@ -762,7 +783,9 @@ export default function NuevaFacturaPage() {
                 </CardTitle>
                 <CardDescription>
                   {tipoDte === '01'
-                    ? 'Los precios incluyen IVA (13%)'
+                    ? (sumarIvaAutomatico
+                        ? 'Se sumará +13% IVA automáticamente a tus precios'
+                        : 'Los precios incluyen IVA (13%)')
                     : tipoDte === '03' || esFiscal
                       ? 'Los precios son sin IVA — el impuesto se desglosa'
                       : tipoDte === '14'
@@ -774,17 +797,33 @@ export default function NuevaFacturaPage() {
                             : 'Agrega los items'}
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' })
-                }
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Agregar Línea
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* ── Checkbox: Sumar IVA automáticamente (solo para Factura Consumidor Final) ── */}
+                {tipoDte === '01' && (
+                  <label
+                    htmlFor="chk-sumar-iva"
+                    className="flex items-center gap-2 cursor-pointer select-none rounded-md bg-muted border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+                  >
+                    <Checkbox
+                      id="chk-sumar-iva"
+                      checked={sumarIvaAutomatico}
+                      onCheckedChange={(checked) => setSumarIvaAutomatico(Boolean(checked))}
+                    />
+                    <span>Mis precios NO tienen IVA (Sumar +13%)</span>
+                  </label>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' })
+                  }
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Agregar Línea
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {itemsFields.map((field, index) => (
