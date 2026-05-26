@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useAPI } from '@/hooks/use-api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,13 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DTE_STATUS_COLORS, TIPOS_DTE } from '@/lib/constants';
 import { fetchClient } from '@/lib/api-client';
-import { Ban, Download, ExternalLink, ShieldCheck, Printer, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Ban, Download, ExternalLink, ShieldCheck, Printer, FileText, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { DteLifecycleTracker } from '@/components/ui/dte-lifecycle-tracker';
 
 export default function FacturaDetallePage({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = use(params);
   const router = useRouter();
+  const [isConciliando, setIsConciliando] = useState(false);
   
   const { data: dteRes, isLoading, mutate } = useAPI<any>(`/api/dte/v2/factura/${codigo}`);
   
@@ -58,6 +60,19 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
       mutate();
     } catch (e: any) {
       alert(`Error al anular: ${e.message}`);
+    }
+  };
+
+  const handleConciliar = async () => {
+    setIsConciliando(true);
+    try {
+      const res = await fetchClient(`/api/dte/v2/factura/${codigo}/conciliar`, { method: 'POST' });
+      alert(res.mensaje || 'Conciliación terminada.');
+      mutate();
+    } catch (e: any) {
+      alert(`Error al conciliar: ${e.message}`);
+    } finally {
+      setIsConciliando(false);
     }
   };
 
@@ -156,8 +171,25 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
               <Ban className="h-4 w-4 mr-2" /> Anular DTE
             </Button>
           )}
+          {(dte.status === 'TRANSMITIDO' || dte.status === 'ERROR' || dte.status === 'CREADO') && (
+            <Button variant="secondary" onClick={handleConciliar} disabled={isConciliando}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isConciliando ? 'animate-spin' : ''}`} /> 
+              {isConciliando ? 'Conciliando...' : 'Conciliar Estado'}
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* ── Ciclo de Vida DTE ── */}
+      <Card className="hide-on-print">
+        <CardHeader className="pb-2">
+          <CardTitle>Ciclo de Vida Fiscal</CardTitle>
+          <CardDescription>Seguimiento en tiempo real ante el Ministerio de Hacienda</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DteLifecycleTracker currentStatus={dte.status} errorMessage={dte.errorLog || dte.observaciones} />
+        </CardContent>
+      </Card>
 
       {/* ── Panel de Resumen Rápido (Solo Pantalla) ── */}
       <div className="grid gap-6 md:grid-cols-3 hide-on-print">

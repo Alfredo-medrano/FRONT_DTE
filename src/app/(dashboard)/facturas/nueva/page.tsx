@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { crearFacturaSchema, FacturaFormValues } from '@/lib/validators';
@@ -11,6 +11,7 @@ import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,8 +33,14 @@ import {
   Heart,
   Globe,
   Link2,
+  Eye,
+  Save,
+  RotateCcw,
+  XCircle,
+  Search,
 } from 'lucide-react';
 import { TIPOS_DTE, CONDICIONES_OPERACION } from '@/lib/constants';
+import { DteLifecycleTracker } from '@/components/ui/dte-lifecycle-tracker';
 
 // ── Tipos de documento receptor ────────────────────────────
 const TIPOS_DOCUMENTO = [
@@ -72,38 +79,189 @@ const PAISES_FEX = [
   { codigo: '9999', nombre: 'OTRO PAÍS' },
 ];
 
+// ── Módulo 2: Clientes frecuentes (mock — reemplazar por llamada API) ──
+const CLIENTES_FRECUENTES = [
+  {
+    numDocumento: '06142803941019',
+    tipoDocumento: '36' as const,
+    nombre: 'DISTRIBUIDORA EL SOL, S.A. DE C.V.',
+    correo: 'facturacion@distribuidoraelsol.com',
+    telefono: '22234455',
+    nrc: '1234567',
+    codActividad: '46100',
+    descActividad: 'COMERCIO AL POR MAYOR NO ESPECIALIZADO',
+    direccion: { departamento: '06', municipio: '14', complemento: 'Col. Escalón, Calle El Progreso #123, San Salvador' },
+  },
+  {
+    numDocumento: '06141502001015',
+    tipoDocumento: '36' as const,
+    nombre: 'INVERSIONES MODERNA, S.A. DE C.V.',
+    correo: 'contabilidad@moderna.com.sv',
+    telefono: '25558899',
+    nrc: '2345678',
+    codActividad: '47190',
+    descActividad: 'COMERCIO AL POR MENOR EN ALMACENES NO ESPECIALIZADOS',
+    direccion: { departamento: '06', municipio: '14', complemento: 'Blvd. Los Héroes, Edificio Central #500' },
+  },
+  {
+    numDocumento: '06140101880123',
+    tipoDocumento: '36' as const,
+    nombre: 'TECNOLOGÍA AVANZADA, S.A. DE C.V.',
+    correo: 'admin@tecavanzada.com',
+    telefono: '22119988',
+    nrc: '3456789',
+    codActividad: '62010',
+    descActividad: 'PROGRAMACIÓN INFORMÁTICA',
+    direccion: { departamento: '06', municipio: '14', complemento: 'Residencial San Luis, Pasaje 5, Casa #12' },
+  },
+  {
+    numDocumento: '04231507950032',
+    tipoDocumento: '36' as const,
+    nombre: 'AGRO SERVICIOS DEL ORIENTE, S.A. DE C.V.',
+    correo: 'agroservicios@gmail.com',
+    telefono: '26001122',
+    nrc: '4567890',
+    codActividad: '01110',
+    descActividad: 'CULTIVO DE CEREALES (EXCEPTO ARROZ), LEGUMBRES Y SEMILLAS OLEAGINOSAS',
+    direccion: { departamento: '12', municipio: '01', complemento: 'Km 120 Carretera al Oriente, San Miguel' },
+  },
+  {
+    numDocumento: '023456789',
+    tipoDocumento: '13' as const,
+    nombre: 'JUAN CARLOS LÓPEZ MARTÍNEZ',
+    correo: 'jclopez@gmail.com',
+    telefono: '78889900',
+    nrc: '',
+    codActividad: '',
+    descActividad: '',
+    direccion: { departamento: '06', municipio: '14', complemento: 'Colonia Maquilishuat, Calle Principal #45' },
+  },
+];
+
+// ── Módulo 3: Catálogo de productos (mock — reemplazar por llamada API) ──
+const CATALOGO_PRODUCTOS = [
+  { codigo: 'SERV-001', descripcion: 'Servicio de Consultoría Empresarial (hora)', precioUnitario: 75.00, uniMedida: 99 },
+  { codigo: 'PROD-100', descripcion: 'Laptop Dell Latitude 5540 i7 16GB', precioUnitario: 1250.00, uniMedida: 59 },
+  { codigo: 'PROD-101', descripcion: 'Monitor Samsung 27" 4K UHD', precioUnitario: 385.00, uniMedida: 59 },
+  { codigo: 'SERV-002', descripcion: 'Desarrollo de Software a Medida (hora)', precioUnitario: 55.00, uniMedida: 99 },
+  { codigo: 'PROD-200', descripcion: 'Resma de Papel Bond Carta (500 hojas)', precioUnitario: 4.50, uniMedida: 59 },
+  { codigo: 'PROD-201', descripcion: 'Toner HP LaserJet 26A Original', precioUnitario: 68.00, uniMedida: 59 },
+];
+
+// ── Módulo 1: Formateo de documentos con guiones automáticos ────────
+function formatDocumento(raw: string, tipoDoc: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (tipoDoc === '13') {
+    // DUI: 00000000-0
+    const d = digits.slice(0, 9);
+    if (d.length <= 8) return d;
+    return `${d.slice(0, 8)}-${d.slice(8, 9)}`;
+  }
+  if (tipoDoc === '36') {
+    // NIT: 0000-000000-000-0
+    const d = digits.slice(0, 14);
+    if (d.length <= 4) return d;
+    if (d.length <= 10) return `${d.slice(0, 4)}-${d.slice(4)}`;
+    if (d.length <= 13) return `${d.slice(0, 4)}-${d.slice(4, 10)}-${d.slice(10)}`;
+    return `${d.slice(0, 4)}-${d.slice(4, 10)}-${d.slice(10, 13)}-${d.slice(13, 14)}`;
+  }
+  return raw;
+}
+
+function formatNrc(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 6) return d;
+  // Inserta guion antes del último dígito (check digit)
+  return `${d.slice(0, d.length - 1)}-${d.slice(-1)}`;
+}
+
+function validarFormatoDoc(valor: string, tipoDoc: string): 'valid' | 'invalid' | 'incomplete' {
+  if (!valor) return 'incomplete';
+  if (tipoDoc === '13') {
+    if (!/^\d{8}-\d$/.test(valor)) {
+      const digs = valor.replace(/\D/g, '');
+      return digs.length < 9 ? 'incomplete' : 'invalid';
+    }
+    // Validación Módulo 10
+    const digits = valor.replace(/\D/g, '');
+    let sum = 0;
+    for (let i = 0; i < 8; i++) {
+      sum += parseInt(digits[i], 10) * (9 - i);
+    }
+    const checkDigit = (sum % 10) === 0 ? 0 : 10 - (sum % 10);
+    if (parseInt(digits[8], 10) !== checkDigit) return 'invalid';
+    return 'valid';
+  }
+  if (tipoDoc === '36') {
+    const digs = valor.replace(/-/g, '');
+    if (/^(\d{14}|\d{9})$/.test(digs)) return 'valid';
+    if (/^\d{0,13}$/.test(digs)) return 'incomplete';
+    return 'invalid';
+  }
+  return valor.length > 0 ? 'valid' : 'incomplete';
+}
+
+function validarNrc(valor: string): 'valid' | 'invalid' | 'incomplete' {
+  if (!valor) return 'incomplete';
+  if (/^\d{1,7}-\d$/.test(valor)) return 'valid';
+  return 'incomplete';
+}
+
+// ── Clave de LocalStorage para borradores ──
+const DRAFT_KEY = 'dte-borrador-factura';
+
 export default function NuevaFacturaPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Preparando datos de facturación...');
+  const [syntheticStatus, setSyntheticStatus] = useState('CREADO');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sumarIvaAutomatico, setSumarIvaAutomatico] = useState(false);
 
+  // ── Módulo 2: Clientes frecuentes ──
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const clienteInputRef = useRef<HTMLInputElement>(null);
+  const clienteDropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Módulo 3: Catálogo de productos ──
+  const [productoDropdownIndex, setProductoDropdownIndex] = useState<number | null>(null);
+  const [productoQuery, setProductoQuery] = useState('');
+
+  // ── Módulo 5: Vista previa PDF ──
+  const [showPreview, setShowPreview] = useState(false);
+
+  // ── Módulo 6: Borrador y limpieza ──
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [borradorMsg, setBorradorMsg] = useState<string | null>(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+
+  const defaultValues: FacturaFormValues = {
+    tipoDte: '01',
+    condicionOperacion: 1,
+    receptor: {
+      tipoDocumento: '36',
+      nombre: '',
+      numDocumento: '',
+      nit: '',
+      nrc: '',
+      codActividad: '',
+      descActividad: '',
+      correo: '',
+      telefono: '',
+      direccion: { departamento: '06', municipio: '14', complemento: '' },
+    },
+    items: [
+      { descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' },
+    ],
+    observaciones: '',
+    documentoRelacionado: undefined,
+    datosExportacion: { tipoItemExpor: 1, seguro: 0, flete: 0 },
+  };
+
   const form = useForm<FacturaFormValues>({
     resolver: zodResolver(crearFacturaSchema as any),
-    defaultValues: {
-      tipoDte: '01',
-      condicionOperacion: 1,
-      receptor: {
-        tipoDocumento: '36',
-        nombre: '',
-        numDocumento: '',
-        nit: '',
-        nrc: '',
-        codActividad: '',
-        descActividad: '',
-        correo: '',
-        telefono: '',
-        direccion: { departamento: '06', municipio: '14', complemento: '' },
-      },
-      items: [
-        { descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' },
-      ],
-      observaciones: '',
-      documentoRelacionado: undefined,
-      datosExportacion: { tipoItemExpor: 1, seguro: 0, flete: 0 },
-    },
+    defaultValues,
   });
 
   const { fields: itemsFields, append: appendItem, remove: removeItem } = useFieldArray({
@@ -144,6 +302,159 @@ export default function NuevaFacturaPage() {
     [deptoReceptor]
   );
 
+  // ── Módulo 1: Validación de formato en tiempo real ───────
+  const docValidation = useMemo(() => {
+    const tipoDoc = watchAll.receptor?.tipoDocumento || '36';
+    const valor = watchAll.receptor?.numDocumento || '';
+    return validarFormatoDoc(valor, tipoDoc);
+  }, [watchAll.receptor?.tipoDocumento, watchAll.receptor?.numDocumento]);
+
+  const nrcValidation = useMemo(() => {
+    return validarNrc(watchAll.receptor?.nrc || '');
+  }, [watchAll.receptor?.nrc]);
+
+  // ── Módulo 2: Sugerencias de clientes ────────────────────
+  const clienteSugerencias = useMemo(() => {
+    const doc = (watchAll.receptor?.numDocumento || '').replace(/-/g, '');
+    if (doc.length < 3) return [];
+    return CLIENTES_FRECUENTES.filter(c =>
+      c.numDocumento.includes(doc) || c.nombre.toLowerCase().includes(doc.toLowerCase())
+    );
+  }, [watchAll.receptor?.numDocumento]);
+
+  // ── Módulo 3: Sugerencias de productos ───────────────────
+  const productoSugerencias = useMemo(() => {
+    if (productoDropdownIndex === null || productoQuery.length < 2) return [];
+    const q = productoQuery.toLowerCase();
+    return CATALOGO_PRODUCTOS.filter(p =>
+      p.codigo.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q)
+    );
+  }, [productoDropdownIndex, productoQuery]);
+
+  // ── Módulo 1+2: Handler de documento con máscara ─────────
+  const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tipoDoc = form.getValues('receptor.tipoDocumento') || '36';
+    const formatted = formatDocumento(e.target.value, tipoDoc);
+    form.setValue('receptor.numDocumento', formatted, { shouldValidate: false });
+
+    // Módulo 2: Mostrar/ocultar dropdown de clientes frecuentes
+    const digits = formatted.replace(/-/g, '');
+    setShowClienteDropdown(digits.length >= 3);
+  };
+
+  const handleNrcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatNrc(e.target.value);
+    form.setValue('receptor.nrc', formatted, { shouldValidate: false });
+  };
+
+  const selectCliente = (cliente: typeof CLIENTES_FRECUENTES[0]) => {
+    const tipoDoc = cliente.tipoDocumento;
+    form.setValue('receptor.tipoDocumento', tipoDoc);
+    form.setValue('receptor.numDocumento', formatDocumento(cliente.numDocumento, tipoDoc));
+    form.setValue('receptor.nombre', cliente.nombre);
+    form.setValue('receptor.correo', cliente.correo);
+    form.setValue('receptor.telefono', cliente.telefono || '');
+    if (cliente.nrc) form.setValue('receptor.nrc', formatNrc(cliente.nrc));
+    if (cliente.codActividad) {
+      form.setValue('receptor.codActividad', cliente.codActividad);
+      form.setValue('receptor.descActividad', cliente.descActividad);
+    }
+    if (cliente.direccion) {
+      form.setValue('receptor.direccion.departamento', cliente.direccion.departamento);
+      form.setValue('receptor.direccion.municipio', cliente.direccion.municipio);
+      form.setValue('receptor.direccion.complemento', cliente.direccion.complemento);
+    }
+    setShowClienteDropdown(false);
+  };
+
+  // ── Módulo 3: Seleccionar producto ───────────────────────
+  const selectProducto = (producto: typeof CATALOGO_PRODUCTOS[0], index: number) => {
+    form.setValue(`items.${index}.codigo`, producto.codigo);
+    form.setValue(`items.${index}.descripcion`, producto.descripcion);
+    form.setValue(`items.${index}.precioUnitario`, producto.precioUnitario);
+    form.setValue(`items.${index}.uniMedida`, producto.uniMedida);
+    setProductoDropdownIndex(null);
+    setProductoQuery('');
+  };
+
+  // ── Módulo 4: Tab en Descuento → nueva línea ─────────────
+  const handleDescuentoTab = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Tab' && !e.shiftKey && index === itemsFields.length - 1) {
+      e.preventDefault();
+      appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' });
+      setTimeout(() => {
+        document.getElementById(`item-codigo-${index + 1}`)?.focus();
+      }, 60);
+    }
+  };
+
+  // ── Módulo 6: Borrador y limpieza ────────────────────────
+  const saveDraft = useCallback(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(form.getValues()));
+      setBorradorMsg('✓ Borrador guardado');
+      setTimeout(() => setBorradorMsg(null), 3000);
+    } catch { /* localStorage no disponible */ }
+  }, [form]);
+
+  const restoreDraft = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        form.reset(parsed);
+        setShowDraftBanner(false);
+        setBorradorMsg('✓ Borrador restaurado');
+        setTimeout(() => setBorradorMsg(null), 3000);
+      }
+    } catch { /* ignore */ }
+  }, [form]);
+
+  const dismissDraft = useCallback(() => {
+    localStorage.removeItem(DRAFT_KEY);
+    setShowDraftBanner(false);
+  }, []);
+
+  const clearForm = useCallback(() => {
+    form.reset(defaultValues);
+    setStep(1);
+    setSumarIvaAutomatico(false);
+    setShowClearConfirm(false);
+    setSubmitError(null);
+    localStorage.removeItem(DRAFT_KEY);
+    setBorradorMsg('✓ Formulario limpiado');
+    setTimeout(() => setBorradorMsg(null), 3000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
+  // ── Módulo 6: Restaurar borrador al montar ───────────────
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) setShowDraftBanner(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  // ── Click outside para cerrar dropdowns ──────────────────
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // Cerrar dropdown de clientes
+      if (
+        clienteDropdownRef.current && !clienteDropdownRef.current.contains(e.target as Node) &&
+        clienteInputRef.current && !clienteInputRef.current.contains(e.target as Node)
+      ) {
+        setShowClienteDropdown(false);
+      }
+      // Cerrar dropdown de productos
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-product-dropdown]')) {
+        setProductoDropdownIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // ── Submit ───────────────────────────────────────────────
   const onSubmit = async (data: FacturaFormValues) => {
     let progressTimer: NodeJS.Timeout | null = null;
@@ -153,19 +464,23 @@ export default function NuevaFacturaPage() {
     try {
       setIsSubmitting(true);
       setSubmitError(null);
+      setSyntheticStatus('CREADO');
       setLoadingMessage('Preparando datos de facturación...');
 
       // Simular progreso de firma y transmisión para la UI
       progressTimer = setTimeout(() => {
         setLoadingMessage('Firmando digitalmente el documento (JWS)...');
+        setSyntheticStatus('FIRMADO');
       }, 900);
 
       progressTimer2 = setTimeout(() => {
         setLoadingMessage('Transmitiendo al Ministerio de Hacienda...');
+        setSyntheticStatus('TRANSMITIDO');
       }, 1900);
 
       progressTimer3 = setTimeout(() => {
         setLoadingMessage('Guardando y registrando documento fiscal...');
+        setSyntheticStatus('VALIDANDO');
       }, 3100);
 
       const payload: any = { ...data };
@@ -252,6 +567,9 @@ export default function NuevaFacturaPage() {
       if (!dteInfo.requiereDocRelacionado) delete payload.documentoRelacionado;
       if (!esFEX) delete payload.datosExportacion;
 
+      // Limpiar borrador al emitir exitosamente
+      localStorage.removeItem(DRAFT_KEY);
+
       const res = await fetchClient('/api/dte/v2/facturar', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -321,6 +639,13 @@ export default function NuevaFacturaPage() {
   const labelReceptor = esCD ? 'Donante (opcional)' : esFEX ? 'Receptor Internacional' : esFSE ? 'Sujeto Excluido' : 'Datos del Cliente';
   const labelDocumento = esCD ? 'Comprobante de Donación' : 'Factura / Documento';
 
+  // ── Placeholders y maxLength dinámicos por tipo de documento ──
+  const tipoDocReceptor = watchAll.receptor?.tipoDocumento || '36';
+  const docPlaceholder = tipoDocReceptor === '13' ? '00000000-0'
+    : (tipoDocReceptor === '36' || esFiscal) ? '0614-000000-000-0'
+    : 'N° documento';
+  const docMaxLength = tipoDocReceptor === '13' ? 10 : tipoDocReceptor === '36' ? 17 : 25;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* ── Header ─────────────────────────────────────── */}
@@ -335,6 +660,27 @@ export default function NuevaFacturaPage() {
           Paso {step} de 3
         </Badge>
       </div>
+
+      {/* ── Módulo 6: Banner de borrador disponible ────── */}
+      {showDraftBanner && (
+        <div className="rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 p-4 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <Save className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium text-sm">Borrador disponible</p>
+              <p className="text-xs opacity-80">Tienes un documento sin terminar. ¿Deseas continuar donde lo dejaste?</p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button type="button" size="sm" variant="default" onClick={restoreDraft} className="text-xs">
+              Restaurar
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={dismissDraft} className="text-xs">
+              Descartar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── Stepper visual ─────────────────────────────── */}
       <div className="flex items-center gap-1">
@@ -513,14 +859,22 @@ export default function NuevaFacturaPage() {
                 </div>
               )}
 
-              {/* ── Tipo Documento + N° Documento ──── */}
+              {/* ── Tipo Documento + N° Documento (con máscara + autocomplete) ──── */}
               {!esFEX && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Tipo de Documento</Label>
                     <Select
                       value={watchAll.receptor?.tipoDocumento || '36'}
-                      onValueChange={(val) => form.setValue('receptor.tipoDocumento', val as any)}
+                      onValueChange={(val) => {
+                        form.setValue('receptor.tipoDocumento', val as any);
+                        // Re-formatear el documento actual para el nuevo tipo
+                        const currentDoc = form.getValues('receptor.numDocumento') || '';
+                        if (currentDoc && typeof val === 'string') {
+                          form.setValue('receptor.numDocumento', formatDocumento(currentDoc, val));
+                        }
+                        setShowClienteDropdown(false);
+                      }}
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -530,18 +884,66 @@ export default function NuevaFacturaPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 relative">
                     <Label>
                       {esFiscal ? 'NIT del Cliente *' : esFSE ? 'N° Documento *' : esCD ? 'N° Documento (opcional)' : 'N° Documento'}
                     </Label>
-                    <Input
-                      {...form.register('receptor.numDocumento')}
-                      placeholder={esFiscal ? '0614-000000-000-0' : esFSE ? '00000000-0' : 'N° documento'}
-                    />
+                    <div className="relative">
+                      <Input
+                        ref={clienteInputRef}
+                        value={watchAll.receptor?.numDocumento || ''}
+                        onChange={handleDocumentoChange}
+                        onFocus={() => {
+                          const digits = (watchAll.receptor?.numDocumento || '').replace(/-/g, '');
+                          if (digits.length >= 3) setShowClienteDropdown(true);
+                        }}
+                        placeholder={docPlaceholder}
+                        maxLength={docMaxLength}
+                        className="pr-8"
+                        autoComplete="off"
+                      />
+                      {/* ── Módulo 1: Indicador visual de validación ── */}
+                      {(esCCF || esFiscal) && watchAll.receptor?.numDocumento && (
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors duration-200">
+                          {docValidation === 'valid' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : docValidation === 'invalid' ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
                     {form.formState.errors.receptor?.numDocumento && (
                       <span className="text-xs text-destructive">
                         {form.formState.errors.receptor.numDocumento.message}
                       </span>
+                    )}
+                    {/* ── Módulo 2: Dropdown de clientes frecuentes ── */}
+                    {showClienteDropdown && clienteSugerencias.length > 0 && (
+                      <div
+                        ref={clienteDropdownRef}
+                        className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                      >
+                        <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b bg-muted/30">
+                          Clientes frecuentes
+                        </div>
+                        {clienteSugerencias.map((c, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            className="w-full text-left px-3 py-2.5 hover:bg-muted transition-colors text-sm flex items-center gap-3 border-b last:border-b-0"
+                            onClick={() => selectCliente(c)}
+                          >
+                            <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium block truncate text-xs">{c.nombre}</span>
+                              <span className="text-[11px] text-muted-foreground font-mono">
+                                {formatDocumento(c.numDocumento, c.tipoDocumento)}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -585,7 +987,26 @@ export default function NuevaFacturaPage() {
                 {esCCF && (
                   <div className="space-y-2">
                     <Label>NRC del Cliente *</Label>
-                    <Input {...form.register('receptor.nrc')} placeholder="123456-7" />
+                    <div className="relative">
+                      <Input
+                        value={watchAll.receptor?.nrc || ''}
+                        onChange={handleNrcChange}
+                        placeholder="123456-7"
+                        maxLength={9}
+                        className="pr-8"
+                        autoComplete="off"
+                      />
+                      {/* ── Módulo 1: Indicador de NRC ── */}
+                      {watchAll.receptor?.nrc && (
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors duration-200">
+                          {nrcValidation === 'valid' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : nrcValidation === 'invalid' ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
                     {form.formState.errors.receptor?.nrc && (
                       <span className="text-xs text-destructive">
                         {(form.formState.errors.receptor.nrc as any)?.message}
@@ -844,17 +1265,72 @@ export default function NuevaFacturaPage() {
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-6">
+                    {/* ── Módulo 3+4: Campo Código con búsqueda predictiva ── */}
                     <div className="space-y-1">
                       <Label className="text-xs">Código</Label>
-                      <Input {...form.register(`items.${index}.codigo`)} placeholder="SKU" className="h-9 text-sm" />
+                      <Input
+                        id={`item-codigo-${index}`}
+                        value={watchAll.items[index]?.codigo || ''}
+                        onChange={(e) => {
+                          form.setValue(`items.${index}.codigo`, e.target.value);
+                          if (e.target.value.length >= 2) {
+                            setProductoQuery(e.target.value);
+                            setProductoDropdownIndex(index);
+                          } else if (productoDropdownIndex === index) {
+                            setProductoDropdownIndex(null);
+                          }
+                        }}
+                        placeholder="SKU"
+                        className="h-9 text-sm"
+                        autoComplete="off"
+                      />
                     </div>
-                    <div className="space-y-1 md:col-span-2">
+                    {/* ── Módulo 3: Campo Descripción con búsqueda predictiva ── */}
+                    <div className="space-y-1 md:col-span-2 relative">
                       <Label className="text-xs">Descripción *</Label>
                       <Input
-                        {...form.register(`items.${index}.descripcion`)}
+                        value={watchAll.items[index]?.descripcion || ''}
+                        onChange={(e) => {
+                          form.setValue(`items.${index}.descripcion`, e.target.value);
+                          if (e.target.value.length >= 2) {
+                            setProductoQuery(e.target.value);
+                            setProductoDropdownIndex(index);
+                          } else if (productoDropdownIndex === index) {
+                            setProductoDropdownIndex(null);
+                          }
+                        }}
                         placeholder={esCD ? 'Descripción de la donación' : 'Nombre del producto o servicio'}
                         className="h-9 text-sm"
+                        autoComplete="off"
                       />
+                      {/* ── Módulo 3: Dropdown de productos ── */}
+                      {productoDropdownIndex === index && productoSugerencias.length > 0 && (
+                        <div
+                          data-product-dropdown
+                          className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-44 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
+                        >
+                          <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b bg-muted/30">
+                            Catálogo de productos
+                          </div>
+                          {productoSugerencias.map((p, pi) => (
+                            <button
+                              key={pi}
+                              type="button"
+                              data-product-dropdown
+                              className="w-full text-left px-3 py-2 hover:bg-muted transition-colors text-sm border-b last:border-b-0"
+                              onClick={() => selectProducto(p, index)}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-mono text-[10px] text-muted-foreground">{p.codigo}</span>
+                                  <span className="block truncate text-xs">{p.descripcion}</span>
+                                </div>
+                                <span className="text-xs text-primary font-semibold shrink-0">${p.precioUnitario.toFixed(2)}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {form.formState.errors.items?.[index]?.descripcion && (
                         <span className="text-[11px] text-destructive">
                           {form.formState.errors.items[index]?.descripcion?.message}
@@ -877,6 +1353,7 @@ export default function NuevaFacturaPage() {
                         className="h-9 text-sm"
                       />
                     </div>
+                    {/* ── Módulo 4: Tab en Descuento → nueva línea ── */}
                     <div className="space-y-1">
                       <Label className="text-xs">Descuento $</Label>
                       <Input
@@ -884,6 +1361,7 @@ export default function NuevaFacturaPage() {
                         {...form.register(`items.${index}.descuento`, { valueAsNumber: true })}
                         className="h-9 text-sm"
                         placeholder="0.00"
+                        onKeyDown={(e) => handleDescuentoTab(e as React.KeyboardEvent<HTMLInputElement>, index)}
                       />
                     </div>
                   </div>
@@ -1116,24 +1594,36 @@ export default function NuevaFacturaPage() {
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
-                      size="lg"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Enviando...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          {esCD ? 'Emitir Donación' : 'Emitir Factura'}
-                        </>
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full h-11 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/20"
+                        size="lg"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            {esCD ? 'Emitir Donación' : 'Emitir Factura'}
+                          </>
+                        )}
+                      </Button>
+                      {/* ── Módulo 5: Botón Vista Previa ── */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowPreview(true)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Vista Previa del DTE
+                      </Button>
+                    </>
                   )}
                   
                   {step > 1 && (
@@ -1141,6 +1631,27 @@ export default function NuevaFacturaPage() {
                       <ArrowLeft className="h-4 w-4 mr-1.5" />
                       Volver
                     </Button>
+                  )}
+
+                  {/* ── Módulo 6: Borrador y Limpieza ── */}
+                  <div className="flex gap-2 w-full pt-1 border-t">
+                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={saveDraft}>
+                      <Save className="h-3.5 w-3.5 mr-1" />
+                      Borrador
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs text-destructive hover:text-destructive"
+                      onClick={() => setShowClearConfirm(true)}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      Limpiar
+                    </Button>
+                  </div>
+                  {borradorMsg && (
+                    <p className="text-xs text-center text-green-600 dark:text-green-400 animate-in fade-in">{borradorMsg}</p>
                   )}
                 </CardFooter>
               </Card>
@@ -1167,14 +1678,170 @@ export default function NuevaFacturaPage() {
                 {loadingMessage}
               </p>
             </div>
-            {/* Progress bar wrapper */}
-            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden border border-white/5">
-              <div className="bg-gradient-to-r from-primary to-blue-400 h-full rounded-full animate-[pulse_1.5s_infinite]" style={{ width: '75%' }} />
+            
+            <div className="w-full bg-black/20 rounded-xl p-2 mb-2 shadow-inner">
+              <DteLifecycleTracker currentStatus={syntheticStatus} className="!py-2" />
             </div>
+
             <p className="text-[10px] text-gray-400">Por favor, no recargues la página ni cierres el navegador.</p>
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════ */}
+      {/* Módulo 5: Vista Previa del DTE (Dialog Modal)       */}
+      {/* ════════════════════════════════════════════════════ */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vista Previa — {tipoActual?.nombreCorto} {tipoActual?.nombre}</DialogTitle>
+            <DialogDescription>Representación visual del documento fiscal antes de emitirlo.</DialogDescription>
+          </DialogHeader>
+          <div className="relative border rounded-lg p-6 bg-white dark:bg-background space-y-6 text-sm overflow-hidden">
+            {/* Marca de agua diagonal */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+              <span className="text-4xl font-bold text-muted-foreground/[0.07] -rotate-[30deg] whitespace-nowrap select-none tracking-widest">
+                VISTA PREVIA — DOCUMENTO NO VINCULANTE
+              </span>
+            </div>
+
+            {/* Encabezado del documento */}
+            <div className="grid grid-cols-2 gap-4 border-b pb-4">
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Documento</h4>
+                <p className="font-medium">{tipoActual?.nombreCorto} — {tipoActual?.nombre}</p>
+                <p className="text-xs text-muted-foreground">Fecha: {new Date().toLocaleDateString('es-SV')}</p>
+                <p className="text-xs text-muted-foreground">
+                  Condición: {CONDICIONES_OPERACION.find(c => c.codigo === watchAll.condicionOperacion)?.nombre}
+                </p>
+                {sumarIvaAutomatico && tipoDte === '01' && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">⚡ IVA +13% sumado automáticamente</p>
+                )}
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  {esCD ? 'Donante' : 'Receptor'}
+                </h4>
+                <p className="font-medium">{watchAll.receptor?.nombre || (esCD ? 'ANÓNIMO' : '—')}</p>
+                {watchAll.receptor?.numDocumento && (
+                  <p className="text-xs font-mono text-muted-foreground">{watchAll.receptor.numDocumento}</p>
+                )}
+                {watchAll.receptor?.correo && (
+                  <p className="text-xs text-muted-foreground">{watchAll.receptor.correo}</p>
+                )}
+                {esCCF && watchAll.receptor?.nrc && (
+                  <p className="text-xs text-muted-foreground">NRC: {watchAll.receptor.nrc}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Tabla de ítems */}
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Detalle de Items</h4>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-1.5 font-medium w-8">#</th>
+                    <th className="py-1.5 font-medium">Código</th>
+                    <th className="py-1.5 font-medium">Descripción</th>
+                    <th className="py-1.5 font-medium text-right">Cant.</th>
+                    <th className="py-1.5 font-medium text-right">P.U.</th>
+                    <th className="py-1.5 font-medium text-right">Desc.</th>
+                    <th className="py-1.5 font-medium text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {watchAll.items.map((item, idx) => (
+                    <tr key={idx} className="border-b last:border-b-0">
+                      <td className="py-1.5 text-muted-foreground">{idx + 1}</td>
+                      <td className="py-1.5 font-mono">{item.codigo || '—'}</td>
+                      <td className="py-1.5 max-w-[200px] truncate">{item.descripcion || 'Sin descripción'}</td>
+                      <td className="py-1.5 text-right">{item.cantidad}</td>
+                      <td className="py-1.5 text-right">${(item.precioUnitario || 0).toFixed(2)}</td>
+                      <td className="py-1.5 text-right">${(item.descuento || 0).toFixed(2)}</td>
+                      <td className="py-1.5 text-right font-medium">
+                        ${(esCD
+                          ? (lineasCalculadas[idx]?.donacion || 0)
+                          : (lineasCalculadas[idx]?.ventaGravada || 0)
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bloque de totales */}
+            <div className="border-t pt-4 flex justify-end">
+              <div className="space-y-1.5 text-right w-64">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{esFSE ? 'Total Compra' : esCD ? 'Total Donado' : 'Subtotal'}:</span>
+                  <span>${(
+                    esCD ? ((resumen as any)?.totalDonado ?? 0)
+                    : esFSE ? ((resumen as any)?.totalCompra ?? 0)
+                    : (resumen?.subTotalVentas || resumen?.subTotal || 0)
+                  ).toFixed(2)}</span>
+                </div>
+                {((resumen as any)?.totalDescu || 0) > 0 && (
+                  <div className="flex justify-between text-xs text-orange-500">
+                    <span>Descuento:</span>
+                    <span>-${(resumen as any)?.totalDescu?.toFixed(2)}</span>
+                  </div>
+                )}
+                {!esFSE && !esCD && !esFEX && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">IVA (13%):</span>
+                    <span>${((resumen as any)?.totalIva || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {(resumen as any)?.reteRenta > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>Retención Renta:</span>
+                    <span>-${(resumen as any)?.reteRenta?.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-base border-t pt-2 mt-1">
+                  <span>Total a Pagar:</span>
+                  <span className="text-primary">${(
+                    esCD ? ((resumen as any)?.totalDonado ?? 0) : ((resumen as any)?.totalPagar ?? 0)
+                  ).toFixed(2)}</span>
+                </div>
+                {(resumen as any)?.totalLetras && (
+                  <p className="text-[10px] text-muted-foreground uppercase pt-1">{(resumen as any).totalLetras}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cerrar Vista Previa
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════════════════════════════════════ */}
+      {/* Módulo 6: Confirmar limpieza del formulario         */}
+      {/* ════════════════════════════════════════════════════ */}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>¿Descartar documento?</DialogTitle>
+            <DialogDescription>
+              ¿Deseas descartar los datos de este DTE? Esta acción no se puede deshacer y se perderá todo el progreso actual.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancelar
+            </DialogClose>
+            <Button variant="destructive" onClick={clearForm}>
+              <RotateCcw className="h-4 w-4 mr-1.5" />
+              Sí, Limpiar Todo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

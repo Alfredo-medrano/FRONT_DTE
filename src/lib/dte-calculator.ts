@@ -56,10 +56,15 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
   let precioUni, ventaGravada, ivaItem;
 
   if (precioIncluyeIva) {
-      precioUni = precioUnitario;
+      precioUni = precioUnitario; // Preserva el precio unitario ingresado con IVA por ley DTE-01
+      const divisor = new Decimal(1).add(TASA_IVA); // 1.13
+      
+      // MH requiere que cantidad * precioUni == ventaGravada. Por tanto, ventaGravada INCLUYE IVA.
       ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-      const divisor = new Decimal(1).add(TASA_IVA);
-      ivaItem = montoNeto.div(divisor).mul(TASA_IVA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      
+      // Calculamos el ivaItem (Monto - Monto/1.13) como información
+      const montoSinIva = montoNeto.div(divisor).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ivaItem = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).sub(montoSinIva);
   } else if (tipoDte === '14' || tipoDte === '11') {
       precioUni = precioUnitario;
       ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);

@@ -165,14 +165,30 @@ export const crearFacturaSchema = z.object({
           path: ['receptor', 'numDocumento'],
           message: 'DUI Inválido. Debe tener formato 00000000-0',
         });
+      } else {
+        // Validación del algoritmo Módulo 10 para DUI
+        const digits = data.receptor.numDocumento.replace('-', '');
+        let sum = 0;
+        for (let i = 0; i < 8; i++) {
+          sum += parseInt(digits[i], 10) * (9 - i);
+        }
+        const mod = sum % 10;
+        const checkDigit = mod === 0 ? 0 : 10 - mod;
+        if (parseInt(digits[8], 10) !== checkDigit) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['receptor', 'numDocumento'],
+            message: 'DUI Inválido. Dígito verificador incorrecto',
+          });
+        }
       }
     } else if (data.receptor.tipoDocumento === '36') {
       const nitLimpio = data.receptor.numDocumento.replace(/-/g, '');
-      if (!/^\d{14}$/.test(nitLimpio)) {
+      if (!/^(\d{14}|\d{9})$/.test(nitLimpio)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['receptor', 'numDocumento'],
-          message: 'NIT Inválido. Debe tener 14 dígitos',
+          message: 'NIT Inválido. Debe tener 14 o 9 dígitos',
         });
       }
     }
