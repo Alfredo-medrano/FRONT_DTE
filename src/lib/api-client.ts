@@ -24,17 +24,19 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 };
 
+/**
+ * Authenticated HTTP client for the DTE API.
+ *
+ * SECURITY FIX (C1): No longer reads JWT from localStorage/store.
+ * Authentication is handled exclusively via the httpOnly cookie
+ * (sent automatically by `credentials: 'include'`).
+ */
 export const fetchClient = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
-
-  const { apiKey } = useAuthStore.getState();
-  if (apiKey) {
-    headers.set('Authorization', `Bearer ${apiKey}`);
-  }
 
   const url = `${getBaseUrl()}${endpoint}`;
 
@@ -43,7 +45,7 @@ export const fetchClient = async <T>(
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      // Auto logout en caso de 401 (token expirado o faltante)
+      // Auto logout on 401 (expired or missing session cookie)
       if (res.status === 401 && typeof window !== 'undefined' && !url.includes('/auth/login')) {
         useAuthStore.getState().clearKeys();
         window.location.href = '/setup';

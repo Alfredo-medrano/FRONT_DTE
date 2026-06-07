@@ -50,7 +50,6 @@ export default function RegistroPage() {
   const router = useRouter();
   const { step, data, nextStep, prevStep, updateData, isSubmitting, submitError, setSubmitting, setSubmitError, reset } =
     useRegistroStore();
-  const setKeys = useAuthStore((s) => s.setKeys);
   const setEmisor = useEmisorStore((s) => s.setEmisor);
   const [apiKeyVisible, setApiKeyVisible] = useState<string | null>(null);
 
@@ -83,7 +82,6 @@ export default function RegistroPage() {
 
     try {
       const resp = await fetchClient<{
-        token: string;
         emisor: any;
         tenant: any;
         apiKey: { key: string };
@@ -103,8 +101,6 @@ export default function RegistroPage() {
         setApiKeyVisible(resp.apiKey.key);
       }
 
-      // Guardar sesión
-      setKeys(resp.token as string, '');
       if (resp.emisor) {
         setEmisor(resp.emisor.id, resp.emisor.nombre || data.razonSocial);
       }

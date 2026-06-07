@@ -11,7 +11,7 @@ import { useAPI } from '@/hooks/use-api';
 import { useEmisorStore } from '@/hooks/use-emisor';
 
 export default function MiEmpresaPage() {
-  const { data, isLoading } = useAPI('/admin/tenants/current/emisores');
+  const { data, isLoading } = useAPI('/api/dte/v2/mi-cuenta/emisores');
   const emisorName = useEmisorStore((s) => s.emisorName);
   const emisores: any[] = Array.isArray(data) ? data : [];
   const empresa = emisores[0] || null;

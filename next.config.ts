@@ -11,7 +11,13 @@ const withPWA = withPWAInit({
 /**
  * Security headers — ISO 27001 A.14 / OWASP Best Practices
  * Applied to all frontend routes served by Next.js.
+ *
+ * SECURITY FIX (C2): CSP is environment-aware.
+ * - Development: allows unsafe-eval (required by Next.js HMR / React DevTools)
+ * - Production: unsafe-eval REMOVED — eliminates eval()/Function() XSS vectors
  */
+const isProd = process.env.NODE_ENV === "production";
+
 const securityHeaders = [
   {
     // Prevent clickjacking
@@ -44,11 +50,14 @@ const securityHeaders = [
     value: "1; mode=block",
   },
   {
-    // Content Security Policy
+    // Content Security Policy — environment-differentiated
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-eval in dev
+      // SECURITY FIX (C2): No unsafe-eval in production
+      isProd
+        ? "script-src 'self' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'", // Tailwind injects inline styles
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",

@@ -70,7 +70,7 @@ export function Sidebar() {
 
   // ── Datos del plan en tiempo real ──
   const { data: statsRaw } = useAPI<any[]>('/api/dte/v2/estadisticas');
-  const { data: tenantData } = useAPI('/admin/tenants/current');
+  const { data: tenantData } = useAPI('/api/dte/v2/mi-cuenta');
 
   const PLAN_LIMITS: Record<string, number> = {
     BASICO: 100, PROFESIONAL: 500, EMPRESARIAL: 2000, ILIMITADO: Infinity,

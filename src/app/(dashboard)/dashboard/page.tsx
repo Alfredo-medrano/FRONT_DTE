@@ -41,12 +41,11 @@ const PLAN_LIMITS: Record<string, number> = {
 
 export default function DashboardPage() {
   const emisorName = useEmisorStore((s) => s.emisorName);
-  const apiKey = useAuthStore((s) => s.apiKey);
 
   // ── Fetch datos reales ───────────────────────
   const { data: statsRaw, isLoading: statsLoading } = useAPI<StatRow[]>('/api/dte/v2/estadisticas');
   const { data: facturasData, isLoading: facturasLoading } = useAPI('/api/dte/v2/facturas?limit=5');
-  const { data: tenantData } = useAPI('/admin/tenants/current');
+  const { data: tenantData } = useAPI('/api/dte/v2/mi-cuenta');
 
   // ── Parsear facturas recientes ───────────────
   const dtes = Array.isArray(facturasData) ? facturasData : (facturasData as any)?.data || [];

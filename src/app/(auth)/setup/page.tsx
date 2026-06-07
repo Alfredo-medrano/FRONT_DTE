@@ -13,7 +13,6 @@ import { fetchClient } from '@/lib/api-client';
 
 export default function SetupPage() {
   const router = useRouter();
-  const setKeys = useAuthStore((state) => state.setKeys);
   const setEmisor = useEmisorStore((state) => state.setEmisor);
 
   const [nit, setNit] = useState('');
@@ -30,11 +29,10 @@ export default function SetupPage() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetchClient<{ token: string; emisor: any }>('/api/auth/login', {
+      const resp = await fetchClient<{ emisor: any }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ nit: nit.trim(), passwordApi: passwordApi.trim(), ambiente }),
       });
-      setKeys(resp.token as string, '');
 
       if (resp.emisor) {
         setEmisor(resp.emisor.id, resp.emisor.nombre || `Emisor ${nit}`);

@@ -10,7 +10,7 @@ import { useAPI } from '@/hooks/use-api';
 import { fetchClient } from '@/lib/api-client';
 
 export default function IntegracionesPage() {
-  const { data, mutate } = useAPI('/admin/tenants/current/api-keys');
+  const { data, mutate } = useAPI('/api/dte/v2/mi-cuenta/api-keys');
   const keys: any[] = Array.isArray(data) ? data : [];
 
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -18,12 +18,13 @@ export default function IntegracionesPage() {
 
   const handleCreate = async () => {
     try {
-      const resp = await fetchClient<any>('/admin/tenants/current/api-keys', {
+      const resp = await fetchClient<any>('/api/dte/v2/mi-cuenta/api-keys', {
         method: 'POST',
         body: JSON.stringify({ nombre: 'Mi Integración', ambiente: '00' }),
       });
       if (resp?.datos?.apiKey) {
         setNewKey(resp.datos.apiKey);
+        mutate();
       } else {
         // Fallback local para demo
         const generatedKey = `sk_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`;
@@ -32,6 +33,20 @@ export default function IntegracionesPage() {
     } catch {
       const generatedKey = `sk_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`;
       setNewKey(generatedKey);
+    }
+  };
+
+  const handleDelete = async (keyId: string) => {
+    if (!confirm('¿Estás seguro de que deseas revocar esta API Key? Esta acción no se puede deshacer y cualquier sistema usando esta llave dejará de funcionar inmediatamente.')) {
+      return;
+    }
+    try {
+      await fetchClient(`/api/dte/v2/mi-cuenta/api-keys/${keyId}`, {
+        method: 'DELETE',
+      });
+      mutate();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar la llave');
     }
   };
 
@@ -154,7 +169,12 @@ export default function IntegracionesPage() {
                       {k.ultimoUso ? new Date(k.ultimoUso).toLocaleDateString() : 'Nunca'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(k.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
