@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Moon, Sun, Monitor, LogOut, User, ChevronDown } from 'lucide-react';
+import { Moon, Sun, Monitor, LogOut, User, ChevronDown, AlertCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/use-auth';
 import { useEmisorStore } from '@/hooks/use-emisor';
+import { useAPI } from '@/hooks/use-api';
+import { useState, useEffect } from 'react';
 
 // Mapeo de rutas a títulos amigables para el cliente
 const PAGE_TITLES: Record<string, string> = {
@@ -37,6 +39,42 @@ export function Header() {
   const clearEmisor = useEmisorStore((state) => state.clearEmisor);
   const emisorName = useEmisorStore((state) => state.emisorName);
 
+  const { data: alerts } = useAPI<{
+    contingenciaActiva: boolean;
+    cantidadPendientes: number;
+    proximoVencer: string | null;
+  }>('/api/dte/v2/mi-cuenta/alertas-contingencia', {
+    refreshInterval: 10000,
+  });
+
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    if (!alerts?.proximoVencer) {
+      setTimeLeft('');
+      return;
+    }
+
+    const updateTimer = () => {
+      const diffMs = new Date(alerts.proximoVencer!).getTime() - Date.now();
+      if (diffMs <= 0) {
+        setTimeLeft('Plazo vencido');
+        return;
+      }
+
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [alerts?.proximoVencer]);
+
   const handleLogout = () => {
     clearKeys();
     clearEmisor();
@@ -48,69 +86,88 @@ export function Header() {
   const initial = emisorName ? emisorName.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="flex h-14 w-full items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 lg:px-6 z-10 sticky top-0">
-      <div className="flex items-center gap-3">
-        <h1 className="text-base font-semibold capitalize">{pageTitle}</h1>
-      </div>
+    <div className="flex flex-col w-full sticky top-0 z-10">
+      {alerts?.contingenciaActiva && (
+        <div className="flex items-center justify-center gap-3 px-4 py-2.5 text-xs md:text-sm font-medium bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-b border-amber-500/20 text-amber-800 dark:text-amber-300 backdrop-blur-md">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <span>
+            <strong>Modo Contingencia Activo:</strong> {alerts.cantidadPendientes} {alerts.cantidadPendientes === 1 ? 'documento pendiente' : 'documentos pendientes'} de transmisión diferida a Hacienda.
+          </span>
+          {timeLeft && (
+            <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 dark:bg-amber-500/35 border border-amber-500/30 text-[10px] md:text-xs font-semibold tabular-nums uppercase">
+              Plazo: {timeLeft}
+            </span>
+          )}
+        </div>
+      )}
+      <header className="flex h-14 w-full items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 lg:px-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-semibold capitalize">{pageTitle}</h1>
+        </div>
 
-      <div className="flex items-center gap-2">
-        {/* ── Theme Toggle ──────────── */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative">
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Cambiar tema</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme('light')}>
-              <Sun className="mr-2 h-4 w-4" /> Claro
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('dark')}>
-              <Moon className="mr-2 h-4 w-4" /> Oscuro
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('system')}>
-              <Monitor className="mr-2 h-4 w-4" /> Sistema
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          {/* ── Theme Toggle ──────────── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative">
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Cambiar tema</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme('light')}>
+                <Sun className="mr-2 h-4 w-4" /> Claro
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')}>
+                <Moon className="mr-2 h-4 w-4" /> Oscuro
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('system')}>
+                <Monitor className="mr-2 h-4 w-4" /> Sistema
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* ── User Menu ─────────────── */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-md h-8 px-2 pr-1 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-                {initial}
-              </div>
-              <span className="hidden md:inline text-sm font-medium truncate max-w-[120px]">
-                {emisorName || 'Mi Cuenta'}
-              </span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {/* DropdownMenuLabel MUST be inside DropdownMenuGroup per Base UI */}
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{emisorName || 'Mi Cuenta'}</p>
-                  <p className="text-xs text-muted-foreground">Facturación Electrónica</p>
+          {/* ── User Menu ─────────────── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center gap-2 rounded-md h-8 px-2 pr-1 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  {initial}
                 </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/admin/emisores')}>
-              <User className="mr-2 h-4 w-4" />
-              Mi Empresa
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-destructive focus:text-destructive"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Cerrar Sesión
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+                <span className="hidden md:inline text-sm font-medium truncate max-w-[120px]">
+                  {emisorName || 'Mi Cuenta'}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {/* DropdownMenuLabel MUST be inside DropdownMenuGroup per Base UI */}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{emisorName || 'Mi Cuenta'}</p>
+                    <p className="text-xs text-muted-foreground">Facturación Electrónica</p>
+                  </div>
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/admin/emisores')}>
+                <User className="mr-2 h-4 w-4" />
+                Mi Empresa
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+    </div>
   );
 }
