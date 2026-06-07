@@ -31,6 +31,7 @@ export const DTE_STATUS_COLORS: Record<string, string> = {
   RECHAZADO: 'bg-red-100 text-red-800',
   ERROR: 'bg-orange-100 text-orange-800',
   ANULADO: 'bg-gray-100 text-gray-800',
+  CONTINGENCIA: 'bg-amber-100 text-amber-800 border border-amber-200/50',
 };
 
 // Configuración general

@@ -14,6 +14,7 @@ export function DteLifecycleTracker({ currentStatus, errorMessage, className }: 
     switch (currentStatus) {
       case 'CREADO': return 0;
       case 'FIRMADO': return 1;
+      case 'CONTINGENCIA': return 1; // Signed locally, pending transmission
       case 'TRANSMITIDO': return 2;
       case 'VALIDANDO': return 3; // Synthetic state we can pass
       case 'PROCESADO': return 4;
