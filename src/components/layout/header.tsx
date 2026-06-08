@@ -47,6 +47,18 @@ export function Header() {
     refreshInterval: 10000,
   });
 
+  const { data: contingenciaInfo } = useAPI<{
+    contingenciaManual: boolean;
+    tipoContingencia: number;
+    motivoContingencia: string;
+    fechaInicio: string | null;
+    horaInicio: string | null;
+    dtesPendientes: number;
+    conexionMH: boolean;
+  }>('/api/dte/v2/mi-cuenta/contingencia', {
+    refreshInterval: 12000,
+  });
+
   const [timeLeft, setTimeLeft] = useState<string>('');
 
   useEffect(() => {
@@ -87,7 +99,7 @@ export function Header() {
 
   return (
     <div className="flex flex-col w-full sticky top-0 z-10">
-      {alerts?.contingenciaActiva && (
+      {(alerts?.contingenciaActiva || contingenciaInfo?.contingenciaManual || (contingenciaInfo && contingenciaInfo.dtesPendientes > 0)) && (
         <div className="flex items-center justify-center gap-3 px-4 py-2.5 text-xs md:text-sm font-medium bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-b border-amber-500/20 text-amber-800 dark:text-amber-300 backdrop-blur-md">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -95,7 +107,10 @@ export function Header() {
           </span>
           <AlertCircle className="h-4 w-4 text-amber-500" />
           <span>
-            <strong>Modo Contingencia Activo:</strong> {alerts.cantidadPendientes} {alerts.cantidadPendientes === 1 ? 'documento pendiente' : 'documentos pendientes'} de transmisión diferida a Hacienda.
+            <strong>Modo Contingencia Activo:</strong> {contingenciaInfo?.contingenciaManual ? 'Forzado Manual' : 'Automático'}. Hay {contingenciaInfo?.dtesPendientes ?? alerts?.cantidadPendientes ?? 0} {(contingenciaInfo?.dtesPendientes ?? alerts?.cantidadPendientes) === 1 ? 'documento pendiente' : 'documentos pendientes'} de transmisión diferida a Hacienda.
+            <span onClick={() => router.push('/admin/emisores')} className="ml-2 underline cursor-pointer hover:text-amber-900 dark:hover:text-amber-100 font-semibold">
+              Gestionar en Panel
+            </span>
           </span>
           {timeLeft && (
             <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 dark:bg-amber-500/35 border border-amber-500/30 text-[10px] md:text-xs font-semibold tabular-nums uppercase">
@@ -110,6 +125,21 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* ── MH Connection Status ── */}
+          {contingenciaInfo && (
+            <div 
+              onClick={() => router.push('/admin/emisores')}
+              className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] font-medium cursor-pointer hover:bg-accent transition-colors"
+              title="Estado de conexión con el Ministerio de Hacienda. Haz clic para ir al panel de contingencia."
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${contingenciaInfo.conexionMH ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-red-500 shadow-[0_0_4px_#ef4444] animate-pulse'}`} />
+              <span className="text-muted-foreground">MH:</span>
+              <span className={contingenciaInfo.conexionMH ? 'text-green-600 dark:text-green-400' : 'text-red-500 font-semibold'}>
+                {contingenciaInfo.conexionMH ? 'En Línea' : 'Desconectado'}
+              </span>
+            </div>
+          )}
+
           {/* ── Theme Toggle ──────────── */}
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative">
