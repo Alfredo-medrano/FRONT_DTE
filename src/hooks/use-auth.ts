@@ -20,6 +20,7 @@ interface AuthState {
   adminKey: string | null;
   isReady: boolean;
   setAdminKey: (adminKey: string) => void;
+  setReady: () => void;
   clearKeys: () => void;
 }
 
@@ -28,6 +29,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
   isReady: true,
   setAdminKey: (adminKey: string) => {
     set({ adminKey, isReady: true });
+  },
+  setReady: () => {
+    set({ isReady: true });
   },
   clearKeys: () => {
     set({ adminKey: null, isReady: false });

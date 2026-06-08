@@ -38,6 +38,8 @@ export default function SetupPage() {
         setEmisor(resp.emisor.id, resp.emisor.nombre || `Emisor ${nit}`);
       }
 
+      useAuthStore.getState().setReady();
+
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Credenciales inválidas');
