@@ -99,6 +99,21 @@ export function Header() {
 
   return (
     <div className="flex flex-col w-full sticky top-0 z-10">
+      {contingenciaInfo && !contingenciaInfo.conexionMH && !contingenciaInfo.contingenciaManual && (
+        <div className="flex items-center justify-center gap-3 px-4 py-2.5 text-xs md:text-sm font-medium bg-gradient-to-r from-red-500/15 via-rose-500/15 to-red-500/15 border-b border-red-500/20 text-red-800 dark:text-red-300 backdrop-blur-md">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          </span>
+          <AlertCircle className="h-4 w-4 text-red-500" />
+          <span>
+            <strong>Sin conexión con Hacienda:</strong> Se ha perdido la comunicación con los servidores de Hacienda. Activa el Modo Contingencia para seguir facturando.
+            <span onClick={() => router.push('/admin/emisores')} className="ml-2 underline cursor-pointer hover:text-red-900 dark:hover:text-red-100 font-semibold">
+              Activar en Panel
+            </span>
+          </span>
+        </div>
+      )}
       {(alerts?.contingenciaActiva || contingenciaInfo?.contingenciaManual || (contingenciaInfo && contingenciaInfo.dtesPendientes > 0)) && (
         <div className="flex items-center justify-center gap-3 px-4 py-2.5 text-xs md:text-sm font-medium bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border-b border-amber-500/20 text-amber-800 dark:text-amber-300 backdrop-blur-md">
           <span className="relative flex h-2 w-2">
