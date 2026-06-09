@@ -58,6 +58,18 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ codigo
     URL.revokeObjectURL(url);
   };
 
+  // Descargar representación gráfica PDF desde el servidor
+  const handleDownloadPdf = () => {
+    if (!dte) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const link = document.createElement('a');
+    link.href = `${baseUrl}/api/dte/public/factura/${codigoGeneracion}/pdf`;
+    link.download = `Factura_${dte.codigoGeneracion}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
@@ -109,7 +121,10 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ codigo
         </div>
         <div className="flex flex-wrap gap-3">
           <Button variant="outline" size="sm" onClick={handlePrint} className="bg-white dark:bg-slate-900 shadow-sm border-slate-200">
-            <Printer className="h-4 w-4 mr-2 text-slate-500" /> Imprimir / PDF
+            <Printer className="h-4 w-4 mr-2 text-slate-500" /> Imprimir
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="bg-white dark:bg-slate-900 shadow-sm border-slate-200">
+            <Download className="h-4 w-4 mr-2 text-slate-500" /> Descargar PDF
           </Button>
           <Button variant="default" size="sm" onClick={handleDownloadJson} className="shadow-sm">
             <FileJson className="h-4 w-4 mr-2 text-white" /> Descargar JSON Legal

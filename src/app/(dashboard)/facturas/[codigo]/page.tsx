@@ -161,7 +161,13 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
+            <Printer className="h-4 w-4 mr-2" /> Imprimir
+          </Button>
+          <Button variant="outline" onClick={() => {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            window.open(`${baseUrl}/api/dte/v2/factura/${codigo}/pdf`, '_blank');
+          }}>
+            <Download className="h-4 w-4 mr-2" /> Descargar PDF
           </Button>
           <Button variant="outline" onClick={downloadJson}>
             <ExternalLink className="h-4 w-4 mr-2" /> JSON DTE
