@@ -39,11 +39,21 @@ const STEPS = [
 
 // ── NIT Mask helper ────────────────────────────
 function formatNIT(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 14);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 10) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  if (digits.length <= 13) return `${digits.slice(0, 4)}-${digits.slice(4, 10)}-${digits.slice(10)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 10)}-${digits.slice(10, 13)}-${digits.slice(13, 14)}`;
+  const digits = value.replace(/\D/g, '');
+  
+  // Si tiene 9 o menos dígitos, formatear como DUI homologado (00000000-0)
+  if (digits.length <= 9) {
+    const sliced = digits.slice(0, 9);
+    if (sliced.length <= 8) return sliced;
+    return `${sliced.slice(0, 8)}-${sliced.slice(8)}`;
+  }
+  
+  // Si tiene más de 9 dígitos, formatear como NIT tradicional (0000-000000-000-0)
+  const sliced = digits.slice(0, 14);
+  if (sliced.length <= 4) return sliced;
+  if (sliced.length <= 10) return `${sliced.slice(0, 4)}-${sliced.slice(4)}`;
+  if (sliced.length <= 13) return `${sliced.slice(0, 4)}-${sliced.slice(4, 10)}-${sliced.slice(10)}`;
+  return `${sliced.slice(0, 4)}-${sliced.slice(4, 10)}-${sliced.slice(10, 13)}-${sliced.slice(13)}`;
 }
 
 export default function RegistroPage() {
@@ -56,7 +66,7 @@ export default function RegistroPage() {
   // ── Validación por paso ──────────────────────
   const isStep1Valid = Boolean(
     data.razonSocial.trim() &&
-      data.nit.match(/^\d{4}-\d{6}-\d{3}-\d{1}$/) &&
+      data.nit.match(/^(?:\d{4}-\d{6}-\d{3}-\d{1}|\d{8}-\d{1})$/) &&
       data.nrc.trim() &&
       data.codActividad &&
       data.correo.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) &&
