@@ -570,7 +570,7 @@ export default function NuevaFacturaPage() {
       // Limpiar borrador al emitir exitosamente
       localStorage.removeItem(DRAFT_KEY);
 
-      const res = await fetchClient('/api/dte/v2/facturar', {
+      const res = await fetchClient<{ codigoGeneracion: string }>('/api/dte/v2/facturar', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

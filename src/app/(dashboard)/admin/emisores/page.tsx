@@ -16,9 +16,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { fetchClient } from '@/lib/api-client';
 
 export default function MiEmpresaPage() {
-  const { data, isLoading } = useAPI('/api/dte/v2/mi-cuenta/emisores');
+  const { data, isLoading } = useAPI<any[]>('/api/dte/v2/mi-cuenta/emisores');
   const emisorName = useEmisorStore((s) => s.emisorName);
-  const emisores: any[] = Array.isArray(data) ? data : [];
+  const emisores = Array.isArray(data) ? data : [];
   const empresa = emisores[0] || null;
 
   const [isEditing, setIsEditing] = useState(false);

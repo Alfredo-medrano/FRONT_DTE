@@ -79,6 +79,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  turbopack: {},
 };
 
 export default withPWA(nextConfig);

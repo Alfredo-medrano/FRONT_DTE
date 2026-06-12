@@ -16,10 +16,10 @@ export default function FacturasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Llama a la API con la página actual
-  const { data, isLoading } = useAPI(`/api/dte/v2/facturas?page=${page}&limit=20`);
+  const { data, isLoading } = useAPI<{ data: any[]; pagination?: { total: number; totalPages: number } }>(`/api/dte/v2/facturas?page=${page}&limit=20`);
 
-  const dtes: any[] = Array.isArray(data) ? data : (data as any)?.data || [];
-  const pagination = (data as any)?.pagination;
+  const dtes = Array.isArray(data) ? data : data?.data || [];
+  const pagination = data?.pagination;
   const totalPages = pagination?.totalPages || 1;
 
   return (

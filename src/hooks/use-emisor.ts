@@ -19,8 +19,8 @@ interface EmisorState {
 export const useEmisorStore = create<EmisorState>()(
   persist(
     (set: any) => ({
-      emisorId: null,
-      emisorName: null,
+      emisorId: null as string | null,
+      emisorName: null as string | null,
       setEmisor: (id: string, name: string) => {
         set({ emisorId: id, emisorName: name });
       },

@@ -44,11 +44,11 @@ export default function DashboardPage() {
 
   // ── Fetch datos reales ───────────────────────
   const { data: statsRaw, isLoading: statsLoading } = useAPI<StatRow[]>('/api/dte/v2/estadisticas');
-  const { data: facturasData, isLoading: facturasLoading } = useAPI('/api/dte/v2/facturas?limit=5');
-  const { data: tenantData } = useAPI('/api/dte/v2/mi-cuenta');
+  const { data: facturasData, isLoading: facturasLoading } = useAPI<{ data: any[] }>('/api/dte/v2/facturas?limit=5');
+  const { data: tenantData } = useAPI<{ plan: string }>('/api/dte/v2/mi-cuenta');
 
   // ── Parsear facturas recientes ───────────────
-  const dtes = Array.isArray(facturasData) ? facturasData : (facturasData as any)?.data || [];
+  const dtes = Array.isArray(facturasData) ? facturasData : facturasData?.data || [];
 
   // ── Parsear estadísticas del backend ─────────
   // El backend devuelve groupBy([status, tipoDte]) con _count y _sum.totalPagar

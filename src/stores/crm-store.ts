@@ -34,36 +34,35 @@ interface CRMStore {
   deleteCard: (id: string) => void;
   moveCard: (cardId: string, toColumn: PipelineCard['columna']) => void;
 }
-
 export const useCRMStore = create<CRMStore>()(
   persist(
-    (set: any) => ({
-      clientes: [],
-      cards: [],
-      addCliente: (cli: any) => set((state: any) => ({
+    (set) => ({
+      clientes: [] as Cliente[],
+      cards: [] as PipelineCard[],
+      addCliente: (cli) => set((state) => ({
         clientes: [...state.clientes, { ...cli, id: crypto.randomUUID(), createdAt: Date.now() }]
       })),
-      updateCliente: (id: any, cli: any) => set((state: any) => ({
-        clientes: state.clientes.map((c: any) => c.id === id ? { ...c, ...cli } : c)
+      updateCliente: (id, cli) => set((state) => ({
+        clientes: state.clientes.map((c) => c.id === id ? { ...c, ...cli } : c)
       })),
-      deleteCliente: (id: any) => set((state: any) => ({
-        clientes: state.clientes.filter((c: any) => c.id !== id)
+      deleteCliente: (id) => set((state) => ({
+        clientes: state.clientes.filter((c) => c.id !== id)
       })),
-      addCard: (card: any) => set((state: any) => ({
+      addCard: (card) => set((state) => ({
         cards: [...state.cards, { ...card, id: crypto.randomUUID(), createdAt: Date.now() }]
       })),
-      updateCard: (id: any, updates: any) => set((state: any) => ({
-        cards: state.cards.map((c: any) => c.id === id ? { ...c, ...updates } : c)
+      updateCard: (id, updates) => set((state) => ({
+        cards: state.cards.map((c) => c.id === id ? { ...c, ...updates } : c)
       })),
-      deleteCard: (id: any) => set((state: any) => ({
-        cards: state.cards.filter((c: any) => c.id !== id)
+      deleteCard: (id) => set((state) => ({
+        cards: state.cards.filter((c) => c.id !== id)
       })),
-      moveCard: (id: any, toColumn: any) => set((state: any) => ({
-        cards: state.cards.map((c: any) => c.id === id ? { ...c, columna: toColumn } : c)
+      moveCard: (id, toColumn) => set((state) => ({
+        cards: state.cards.map((c) => c.id === id ? { ...c, columna: toColumn } : c)
       })),
     }),
     {
       name: 'dte-crm-storage',
     }
-  ) as any
+  )
 );
