@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Building2, Mail, Phone, MapPin, FileText, Edit2, Save, X, Shield, 
-  AlertTriangle, Wifi, WifiOff, RefreshCw, CheckCircle2, Lock, ShieldAlert 
+  AlertTriangle, Wifi, WifiOff, RefreshCw, CheckCircle2, Lock, ShieldAlert,
+  Upload, Loader2
 } from 'lucide-react';
 import { useAPI } from '@/hooks/use-api';
 import { useEmisorStore } from '@/hooks/use-emisor';
@@ -16,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { fetchClient } from '@/lib/api-client';
 
 export default function MiEmpresaPage() {
-  const { data, isLoading } = useAPI<any[]>('/api/dte/v2/mi-cuenta/emisores');
+  const { data, isLoading, mutate } = useAPI<any[]>('/api/dte/v2/mi-cuenta/emisores');
   const emisorName = useEmisorStore((s) => s.emisorName);
   const emisores = Array.isArray(data) ? data : [];
   const empresa = emisores[0] || null;
@@ -141,6 +142,11 @@ export default function MiEmpresaPage() {
 
       {/* ── Control de Contingencia ── */}
       <ContingenciaControlCard />
+
+      {/* ── Certificado de Firma ────── */}
+      {empresa && (
+        <CertificadoFirmaCard empresa={empresa} mutateEmisor={mutate} />
+      )}
 
       {/* ── Seguridad ───────────────── */}
       <Card className="border-amber-500/20">
@@ -495,11 +501,234 @@ function InfoRow({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
+      <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</span>
       <div className={`text-sm font-medium flex items-center gap-1.5 ${mono ? 'font-mono' : ''}`}>
         {icon}
         {value || '—'}
       </div>
     </div>
+  );
+}
+
+// ── Componente de Certificado de Firma ──
+
+function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateEmisor: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    // Validar extensión
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'crt' && ext !== 'xml') {
+      setErrorMsg('Formato de archivo no válido. Solo se admiten archivos .crt o .xml');
+      return;
+    }
+
+    // Validar tamaño < 1MB
+    if (file.size > 1024 * 1024) {
+      setErrorMsg('El archivo excede el tamaño máximo permitido de 1MB');
+      return;
+    }
+
+    // Si ya existe un certificado configurado, pedir confirmación
+    if (empresa.certUploadedAt) {
+      setPendingFile(file);
+      setConfirmDialogOpen(true);
+    } else {
+      uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    const formData = new FormData();
+    formData.append('certificado', file);
+
+    try {
+      const res = await fetchClient<any>(`/api/dte/v2/mi-cuenta/emisores/${empresa.id}/certificado`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.exito || res.success) {
+        setSuccessMsg(`Certificado cargado con éxito para el NIT ${res.nitDetectado || empresa.nit}`);
+        mutateEmisor();
+      } else {
+        setErrorMsg(res.mensaje || 'Error al procesar el certificado, intenta nuevamente');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error de comunicación con el servidor');
+    } finally {
+      setLoading(false);
+      setPendingFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const confirmOverwrite = () => {
+    setConfirmDialogOpen(false);
+    if (pendingFile) {
+      uploadFile(pendingFile);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const formatFecha = (fechaStr: string) => {
+    if (!fechaStr) return '';
+    try {
+      const d = new Date(fechaStr);
+      return d.toLocaleString('es-SV', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch (e) {
+      return fechaStr;
+    }
+  };
+
+  return (
+    <Card className="border-border shadow-md">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          Certificado de Firma
+        </CardTitle>
+        <CardDescription>
+          Certificado digital (.crt o .xml) emitido por el Ministerio de Hacienda para firmar tus documentos tributarios.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".crt,.xml"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={loading}
+        />
+
+        {!empresa.certUploadedAt ? (
+          <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-center md:text-left space-y-1">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                No tienes un certificado de firma configurado.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Para emitir documentos tributarios electrónicos necesitas subir el archivo .crt o .xml que te entregó el Ministerio de Hacienda al registrarte como emisor.
+              </p>
+            </div>
+            <Button
+              onClick={triggerFileInput}
+              disabled={loading}
+              className="w-full md:w-auto shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Subir Certificado
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="flex-1 text-center md:text-left space-y-1">
+              <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                Certificado activo
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground font-mono">
+                <div>NIT del emisor: <span className="font-semibold text-foreground">{empresa.nit}</span></div>
+                <div>Última actualización: <span className="font-semibold text-foreground">{formatFecha(empresa.certUploadedAt)}</span></div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={triggerFileInput}
+              disabled={loading}
+              className="w-full md:w-auto shrink-0 border-green-500/30 hover:bg-green-500/10 text-green-700 dark:text-green-300"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualizar Certificado
+            </Button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Subiendo certificado...</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
+            <span className="font-semibold">{errorMsg}</span>
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-600">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+            <span className="font-semibold">{successMsg}</span>
+          </div>
+        )}
+
+        <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                ¿Reemplazar certificado de firma?
+              </DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro? Esto reemplazará tu certificado actual y modificará la clave con la que firmas los DTEs.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex justify-end gap-2 border-t pt-3 -mx-4 -mb-4 bg-muted/30">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmDialogOpen(false);
+                  setPendingFile(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmOverwrite}
+              >
+                Reemplazar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }
