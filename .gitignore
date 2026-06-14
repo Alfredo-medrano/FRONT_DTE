@@ -61,4 +61,11 @@ next-env.d.ts
 
 # debug/build logs
 build_output.txt
+build_success.txt
 ts_errors.txt
+
+# PWA generated files
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+public/fallback-*.js

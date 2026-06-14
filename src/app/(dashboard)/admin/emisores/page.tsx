@@ -518,6 +518,7 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -553,9 +554,15 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+    if (!password.trim()) {
+      setErrorMsg('Debes ingresar la contraseña del certificado antes de subirlo.');
+      setLoading(false);
+      return;
+    }
 
     const formData = new FormData();
     formData.append('certificado', file);
+    formData.append('mhClavePrivada', password.trim());
 
     try {
       const res = await fetchClient<any>(`/api/dte/v2/mi-cuenta/emisores/${empresa.id}/certificado`, {
@@ -574,6 +581,7 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
     } finally {
       setLoading(false);
       setPendingFile(null);
+      setPassword('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -626,8 +634,25 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
           accept=".crt,.xml"
           className="hidden"
           onChange={handleFileChange}
-          disabled={loading}
+          disabled={loading || !password.trim()}
         />
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Contraseña del Certificado
+          </label>
+          <input
+            type="password"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Ingresa la contraseña de tu llave privada..."
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+          />
+          <p className="text-[0.8rem] text-muted-foreground">
+            Ingresa la contraseña que asignaste a tu llave privada al descargar el certificado de Hacienda.
+          </p>
+        </div>
 
         {!empresa.certUploadedAt ? (
           <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
@@ -639,12 +664,12 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
                 No tienes un certificado de firma configurado.
               </p>
               <p className="text-xs text-muted-foreground">
-                Para emitir documentos tributarios electrónicos necesitas subir el archivo .crt o .xml que te entregó el Ministerio de Hacienda al registrarte como emisor.
+                Para emitir documentos tributarios electrónicos necesitas ingresar tu contraseña y luego subir el archivo .crt o .xml que te entregó el Ministerio de Hacienda al registrarte como emisor.
               </p>
             </div>
             <Button
               onClick={triggerFileInput}
-              disabled={loading}
+              disabled={loading || !password.trim()}
               className="w-full md:w-auto shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
             >
               <Upload className="h-4 w-4 mr-2" />
@@ -668,7 +693,7 @@ function CertificadoFirmaCard({ empresa, mutateEmisor }: { empresa: any; mutateE
             <Button
               variant="outline"
               onClick={triggerFileInput}
-              disabled={loading}
+              disabled={loading || !password.trim()}
               className="w-full md:w-auto shrink-0 border-green-500/30 hover:bg-green-500/10 text-green-700 dark:text-green-300"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
