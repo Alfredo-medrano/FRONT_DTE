@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Building2, Mail, Phone, MapPin, FileText, Edit2, Save, X, Shield, 
   AlertTriangle, Wifi, WifiOff, RefreshCw, CheckCircle2, Lock, ShieldAlert,
-  Upload, Loader2
+  Upload, Loader2, Key
 } from 'lucide-react';
 import { useAPI } from '@/hooks/use-api';
 import { useEmisorStore } from '@/hooks/use-emisor';
