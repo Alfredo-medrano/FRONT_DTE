@@ -1333,9 +1333,9 @@ export default function NuevaFacturaPage() {
                     )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-6">
+                  <div className="grid gap-3 grid-cols-1 md:grid-cols-12">
                     {/* ── Módulo 3+4: Campo Código con búsqueda predictiva ── */}
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label className="text-xs">Código</Label>
                       <Input
                         id={`item-codigo-${index}`}
@@ -1354,8 +1354,22 @@ export default function NuevaFacturaPage() {
                         autoComplete="off"
                       />
                     </div>
+                    {/* Tipo de Item (Bien / Servicio) */}
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-xs">Tipo *</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        value={watchAll.items[index]?.tipoItem ?? 1}
+                        onChange={(e) => {
+                          form.setValue(`items.${index}.tipoItem`, parseInt(e.target.value, 10));
+                        }}
+                      >
+                        <option value={1}>Bien</option>
+                        <option value={2}>Servicio</option>
+                      </select>
+                    </div>
                     {/* ── Módulo 3: Campo Descripción con búsqueda predictiva ── */}
-                    <div className="space-y-1 md:col-span-2 relative">
+                    <div className="space-y-1 md:col-span-3 relative">
                       <Label className="text-xs">Descripción *</Label>
                       <Input
                         value={watchAll.items[index]?.descripcion || ''}
@@ -1406,7 +1420,7 @@ export default function NuevaFacturaPage() {
                         </span>
                       )}
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-1">
                       <Label className="text-xs">Cantidad *</Label>
                       <Input
                         type="number" step="0.01"
@@ -1414,7 +1428,7 @@ export default function NuevaFacturaPage() {
                         className="h-9 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label className="text-xs">{precioLabel} *</Label>
                       <Input
                         type="number" step="0.01"
@@ -1423,7 +1437,7 @@ export default function NuevaFacturaPage() {
                       />
                     </div>
                     {/* ── Módulo 4: Tab en Descuento → nueva línea ── */}
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                       <Label className="text-xs">Descuento $</Label>
                       <Input
                         type="number" step="0.01"
@@ -1628,6 +1642,16 @@ export default function NuevaFacturaPage() {
                       </div>
                     )}
 
+                    {/* Monto Total Operación (si hay retenciones/percepciones) */}
+                    {(((resumen as any)?.reteRenta || 0) > 0 || ((resumen as any)?.ivaRete1 || 0) > 0 || ((resumen as any)?.ivaPerci1 || 0) > 0) && (
+                      <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
+                        <span className="text-muted-foreground">Monto Total Operación</span>
+                        <span>
+                          ${((resumen as any)?.montoTotalOperacion || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+
                     {(resumen as any)?.reteRenta > 0 && (
                       <div className="flex justify-between text-sm text-orange-600">
                         <span>Retención Renta (10%)</span>
@@ -1652,7 +1676,11 @@ export default function NuevaFacturaPage() {
                     <div className="h-px w-full bg-border my-4" />
 
                     <div className="flex justify-between font-bold text-2xl">
-                      <span>Total</span>
+                      <span>
+                        {(((resumen as any)?.reteRenta || 0) > 0 || ((resumen as any)?.ivaRete1 || 0) > 0) 
+                          ? 'Líquido a Entregar' 
+                          : 'Total'}
+                      </span>
                       <span className="text-primary">
                         ${(
                           esCD
@@ -1877,6 +1905,13 @@ export default function NuevaFacturaPage() {
                     <span>${((resumen as any)?.totalIva || 0).toFixed(2)}</span>
                   </div>
                 )}
+                {/* Monto Total Operación (si hay retenciones/percepciones) */}
+                {(((resumen as any)?.reteRenta || 0) > 0 || ((resumen as any)?.ivaRete1 || 0) > 0 || ((resumen as any)?.ivaPerci1 || 0) > 0) && (
+                  <div className="flex justify-between text-xs font-semibold border-t pt-1 mt-1">
+                    <span className="text-muted-foreground">Monto Total Operación:</span>
+                    <span>${((resumen as any)?.montoTotalOperacion || 0).toFixed(2)}</span>
+                  </div>
+                )}
                 {(resumen as any)?.reteRenta > 0 && (
                   <div className="flex justify-between text-xs text-orange-600">
                     <span>Retención Renta:</span>
@@ -1896,7 +1931,11 @@ export default function NuevaFacturaPage() {
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base border-t pt-2 mt-1">
-                  <span>Total a Pagar:</span>
+                  <span>
+                    {(((resumen as any)?.reteRenta || 0) > 0 || ((resumen as any)?.ivaRete1 || 0) > 0) 
+                      ? 'Líquido a Entregar:' 
+                      : 'Total a Pagar:'}
+                  </span>
                   <span className="text-primary">${(
                     esCD ? ((resumen as any)?.totalDonado ?? 0) : ((resumen as any)?.totalPagar ?? 0)
                   ).toFixed(2)}</span>
