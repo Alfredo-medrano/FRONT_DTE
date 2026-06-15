@@ -101,7 +101,7 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
   };
 };
 
-export const calcularResumenFactura = (lineas: any[], condicionOperacion = 1, tipoDte = '01') => {
+export const calcularResumenFactura = (lineas: any[], condicionOperacion = 1, tipoDte = '01', opciones: { aplicarReteRenta?: boolean; aplicarReteIva1?: boolean; aplicarPerciIva1?: boolean } = {}) => {
   const usaTributos = ['03', '05', '06'].includes(tipoDte);
   const precioIncluyeIva = tipoDte === '01';
 
@@ -158,7 +158,32 @@ export const calcularResumenFactura = (lineas: any[], condicionOperacion = 1, ti
       };
   }
 
-  let montoTotalOperacion, reteRenta = new Decimal(0);
+  // Calcular retenciones especiales para CCF
+  let ivaRete1 = new Decimal(0);
+  let ivaPerci1 = new Decimal(0);
+  let reteRenta = new Decimal(0);
+
+  if (tipoDte === '03') {
+      if (opciones.aplicarReteRenta) {
+          // 10% Renta sobre servicios (tipoItem === 2)
+          const baseServicios = lineas
+              .filter(l => l.tipoItem === 2)
+              .reduce((sum, l) => sum.add(l.ventaGravada || 0), new Decimal(0));
+          reteRenta = baseServicios.mul(TASA_RETENCION_RENTA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      }
+
+      if (opciones.aplicarReteIva1) {
+          // 1% Retención IVA (Gran Contribuyente)
+          ivaRete1 = totalGravada.mul(0.01).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      }
+
+      if (opciones.aplicarPerciIva1) {
+          // 1% Percepción IVA
+          ivaPerci1 = totalGravada.mul(0.01).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      }
+  }
+
+  let montoTotalOperacion;
 
   if (precioIncluyeIva) {
       montoTotalOperacion = subTotal;
@@ -168,15 +193,23 @@ export const calcularResumenFactura = (lineas: any[], condicionOperacion = 1, ti
       montoTotalOperacion = subTotal.add(totalIva).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
   }
 
-  const totalPagar = montoTotalOperacion.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  // totalPagar = montoTotalOperacion - ReteRenta - ReteIVA + PercepcionIVA
+  const totalPagar = montoTotalOperacion
+      .sub(reteRenta)
+      .sub(ivaRete1)
+      .add(ivaPerci1)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
   return {
       subTotalVentas: subTotal.toNumber(),
       totalDescu: totalDescuento.toNumber(),
       subTotal: subTotal.toNumber(),
       montoTotalOperacion: montoTotalOperacion.toNumber(),
-      totalPagar: totalPagar.toNumber(),
       totalIva: totalIva.toNumber(),
+      ivaRete1: ivaRete1.toNumber(),
+      ivaPerci1: ivaPerci1.toNumber(),
+      reteRenta: reteRenta.toNumber(),
+      totalPagar: totalPagar.toNumber(),
       totalLetras: numeroALetras(totalPagar.toNumber()),
       condicionOperacion
   };

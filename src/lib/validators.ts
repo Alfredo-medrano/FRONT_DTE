@@ -95,6 +95,10 @@ export const crearFacturaSchema = z.object({
     codIncoterms: z.string().nullable().optional(),
     descIncoterms: z.string().nullable().optional(),
   }).optional(),
+  // Retenciones e impuestos especiales dinámicos
+  aplicarReteRenta: z.boolean().optional().default(false),
+  aplicarReteIva1: z.boolean().optional().default(false),
+  aplicarPerciIva1: z.boolean().optional().default(false),
 }).superRefine((data, ctx) => {
   const tipo = data.tipoDte;
 

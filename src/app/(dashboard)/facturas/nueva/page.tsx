@@ -257,6 +257,9 @@ export default function NuevaFacturaPage() {
     observaciones: '',
     documentoRelacionado: undefined,
     datosExportacion: { tipoItemExpor: 1, seguro: 0, flete: 0 },
+    aplicarReteRenta: false,
+    aplicarReteIva1: false,
+    aplicarPerciIva1: false,
   };
 
   const form = useForm<FacturaFormValues>({
@@ -294,7 +297,11 @@ export default function NuevaFacturaPage() {
     }
     return calcularLineaProducto(item, idx + 1, tipoDte);
   });
-  const resumen = calcularResumenFactura(lineasCalculadas, watchAll.condicionOperacion, tipoDte);
+  const resumen = calcularResumenFactura(lineasCalculadas, watchAll.condicionOperacion, tipoDte, {
+    aplicarReteRenta: watchAll.aplicarReteRenta,
+    aplicarReteIva1: watchAll.aplicarReteIva1,
+    aplicarPerciIva1: watchAll.aplicarPerciIva1,
+  });
 
   // ── Municipios filtrados ─────────────────────────────────
   const deptoReceptor = watchAll.receptor?.direccion?.departamento || '';
@@ -775,6 +782,67 @@ export default function NuevaFacturaPage() {
                   </Select>
                 </div>
               </div>
+
+              {/* ── Retenciones e Impuestos Especiales (DTE-03 / CCF) ── */}
+              {esCCF && (
+                <div className="rounded-lg border bg-card p-4 space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Retenciones e Impuestos Especiales
+                  </h4>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="flex items-start gap-2.5 rounded-md border p-3 bg-muted/20">
+                      <Checkbox
+                        id="aplicarReteRenta"
+                        checked={watchAll.aplicarReteRenta}
+                        onCheckedChange={(checked) => form.setValue('aplicarReteRenta', !!checked)}
+                        className="mt-0.5"
+                      />
+                      <div className="grid gap-1 leading-none">
+                        <Label htmlFor="aplicarReteRenta" className="text-xs font-medium cursor-pointer">
+                          Retención Renta 10%
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground leading-normal">
+                          Sobre servicios profesionales (tipoItem: Servicio)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 rounded-md border p-3 bg-muted/20">
+                      <Checkbox
+                        id="aplicarReteIva1"
+                        checked={watchAll.aplicarReteIva1}
+                        onCheckedChange={(checked) => form.setValue('aplicarReteIva1', !!checked)}
+                        className="mt-0.5"
+                      />
+                      <div className="grid gap-1 leading-none">
+                        <Label htmlFor="aplicarReteIva1" className="text-xs font-medium cursor-pointer">
+                          Retención IVA 1%
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground leading-normal">
+                          Si el cliente receptor es catalogado como Gran Contribuyente
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 rounded-md border p-3 bg-muted/20">
+                      <Checkbox
+                        id="aplicarPerciIva1"
+                        checked={watchAll.aplicarPerciIva1}
+                        onCheckedChange={(checked) => form.setValue('aplicarPerciIva1', !!checked)}
+                        className="mt-0.5"
+                      />
+                      <div className="grid gap-1 leading-none">
+                        <Label htmlFor="aplicarPerciIva1" className="text-xs font-medium cursor-pointer">
+                          Percepción IVA 1%
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground leading-normal">
+                          Si tu empresa (emisor) es catalogada como Gran Contribuyente
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ── Banner informativo ───────────────── */}
               <div className="flex items-start gap-3 rounded-lg bg-muted/50 border p-3">
@@ -1567,6 +1635,20 @@ export default function NuevaFacturaPage() {
                       </div>
                     )}
 
+                    {((resumen as any)?.ivaRete1 || 0) > 0 && (
+                      <div className="flex justify-between text-sm text-orange-600">
+                        <span>Retención IVA (1%)</span>
+                        <span>-${(resumen as any)?.ivaRete1?.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {((resumen as any)?.ivaPerci1 || 0) > 0 && (
+                      <div className="flex justify-between text-sm text-emerald-600">
+                        <span>Percepción IVA (1%)</span>
+                        <span>+${(resumen as any)?.ivaPerci1?.toFixed(2)}</span>
+                      </div>
+                    )}
+
                     <div className="h-px w-full bg-border my-4" />
 
                     <div className="flex justify-between font-bold text-2xl">
@@ -1799,6 +1881,18 @@ export default function NuevaFacturaPage() {
                   <div className="flex justify-between text-xs text-orange-600">
                     <span>Retención Renta:</span>
                     <span>-${(resumen as any)?.reteRenta?.toFixed(2)}</span>
+                  </div>
+                )}
+                {((resumen as any)?.ivaRete1 || 0) > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>Retención IVA (1%):</span>
+                    <span>-${(resumen as any)?.ivaRete1?.toFixed(2)}</span>
+                  </div>
+                )}
+                {((resumen as any)?.ivaPerci1 || 0) > 0 && (
+                  <div className="flex justify-between text-xs text-emerald-600">
+                    <span>Percepción IVA (1%):</span>
+                    <span>+${(resumen as any)?.ivaPerci1?.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base border-t pt-2 mt-1">
