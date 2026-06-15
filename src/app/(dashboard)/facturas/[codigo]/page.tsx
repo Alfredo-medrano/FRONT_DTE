@@ -45,6 +45,12 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
   const isError = dte.status === 'ERROR' || dte.status === 'RECHAZADO';
   const tipo = TIPOS_DTE.find(t => t.codigo === dte.tipoDte);
 
+  const isCCF = dte.tipoDte === '03';
+  const isFSE = dte.tipoDte === '14';
+  const isCD = dte.tipoDte === '15';
+  const totalIva = dte.resumen?.totalIva ?? dte.resumen?.tributos?.find((t: any) => t.codigo === '20')?.valor ?? 0;
+  const tieneRetenciones = isFSE || (isCCF && ((dte.resumen?.reteRenta || 0) > 0 || (dte.resumen?.ivaRete1 || 0) > 0 || (dte.resumen?.ivaPerci1 || 0) > 0));
+
   const handleAnular = async () => {
     if (!confirm('¿Estás seguro de que deseas anular este DTE? Esta acción no se puede deshacer.')) return;
     
@@ -215,22 +221,68 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
           <CardContent>
              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                   <span className="text-muted-foreground">Subtotal Ventas</span>
-                   <span>${(dte.resumen?.subTotalVentas || dte.resumen?.subTotal || dte.resumen?.totalSujeto || 0).toFixed(2)}</span>
+                   <span className="text-muted-foreground">{isFSE ? 'Total Compra' : 'Subtotal Ventas'}</span>
+                   <span>${(isFSE ? (dte.resumen?.totalCompra || dte.resumen?.subTotal || 0) : (dte.resumen?.totalGravada || dte.resumen?.subTotalVentas || dte.resumen?.subTotal || 0)).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                   <span className="text-muted-foreground">IVA (13%)</span>
-                   <span>${(dte.resumen?.totalIva || 0).toFixed(2)}</span>
-                </div>
-                {dte.resumen?.reteRenta > 0 && (
+                {isCCF && (
+                   <>
+                      <div className="flex justify-between text-xs text-muted-foreground/80">
+                         <span>Ventas No Sujetas</span>
+                         <span>${(dte.resumen?.totalNoSuj || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground/80">
+                         <span>Ventas Exentas</span>
+                         <span>${(dte.resumen?.totalExenta || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground/80 text-orange-500">
+                         <span>Descuento</span>
+                         <span>-${(dte.resumen?.totalDescu || 0).toFixed(2)}</span>
+                      </div>
+                   </>
+                )}
+                {!isFSE && !isCD && (
+                   <div className="flex justify-between">
+                      <span className="text-muted-foreground">IVA (13%)</span>
+                      <span>${totalIva.toFixed(2)}</span>
+                   </div>
+                )}
+                {tieneRetenciones && (
+                   <div className="flex justify-between text-xs font-semibold border-t pt-1 mt-1">
+                      <span className="text-muted-foreground">Monto Total Operación</span>
+                      <span>${(dte.resumen?.montoTotalOperacion || 0).toFixed(2)}</span>
+                   </div>
+                )}
+                {isCCF && (
+                   <>
+                      {(dte.resumen?.reteRenta || 0) >= 0 && (
+                         <div className="flex justify-between text-xs text-orange-600">
+                            <span>Retención Renta (10%)</span>
+                            <span>-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
+                         </div>
+                      )}
+                      {(dte.resumen?.ivaRete1 || 0) >= 0 && (
+                         <div className="flex justify-between text-xs text-orange-600">
+                            <span>Retención IVA (1%)</span>
+                            <span>-${(dte.resumen?.ivaRete1 || 0).toFixed(2)}</span>
+                         </div>
+                      )}
+                      {(dte.resumen?.ivaPerci1 || 0) >= 0 && (
+                         <div className="flex justify-between text-xs text-emerald-600">
+                            <span>Percepción IVA (1%)</span>
+                            <span>+${(dte.resumen?.ivaPerci1 || 0).toFixed(2)}</span>
+                         </div>
+                      )}
+                   </>
+                )}
+                {isFSE && (dte.resumen?.reteRenta || 0) >= 0 && (
                    <div className="flex justify-between text-orange-600">
                       <span>Retención Renta (10%)</span>
-                      <span>-${dte.resumen.reteRenta.toFixed(2)}</span>
+                      <span>-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
                    </div>
                 )}
                 <div className="h-px bg-border my-2" />
                 <div className="flex justify-between text-lg font-bold">
-                   <span>Total a Pagar</span>
+                   <span>{tieneRetenciones ? 'Líquido a Entregar' : 'Total a Pagar'}</span>
                    <span className="text-primary">${(dte.resumen?.totalPagar || dte.resumen?.totalDonado || 0).toFixed(2)}</span>
                 </div>
              </div>
@@ -368,30 +420,89 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
             {/* Cuadro de Totales */}
             <div className="md:col-span-2 border rounded-lg p-4 bg-muted/5 print:bg-transparent flex flex-col justify-between">
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-0.5">
-                  <span className="text-muted-foreground print:text-black">Monto Subtotal:</span>
-                  <span>${(dte.resumen?.subTotalVentas || dte.resumen?.subTotal || dte.resumen?.totalSujeto || 0).toFixed(2)}</span>
-                </div>
-                {dte.resumen?.totalDescu > 0 && (
-                  <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
-                    <span>Descuento Comercial:</span>
-                    <span>-${dte.resumen.totalDescu.toFixed(2)}</span>
-                  </div>
+                {isCCF ? (
+                  <>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">Subtotal Ventas Gravadas:</span>
+                      <span>${(dte.resumen?.totalGravada || dte.resumen?.subTotal || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">Ventas No Sujetas:</span>
+                      <span>${(dte.resumen?.totalNoSuj || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">Ventas Exentas:</span>
+                      <span>${(dte.resumen?.totalExenta || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                      <span>Descuento Comercial:</span>
+                      <span>-${(dte.resumen?.totalDescu || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">IVA Gravado (13%):</span>
+                      <span>${totalIva.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 font-bold border-t pt-1 mt-1 print:border-black/20">
+                      <span className="text-muted-foreground print:text-black">Monto Total Operación:</span>
+                      <span>${(dte.resumen?.montoTotalOperacion || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                      <span>Retención Impuesto Renta (10%):</span>
+                      <span>-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                      <span>Retención IVA (1%):</span>
+                      <span>-${(dte.resumen?.ivaRete1 || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-emerald-600 print:text-black">
+                      <span>Percepción IVA (1%):</span>
+                      <span>+${(dte.resumen?.ivaPerci1 || 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : isFSE ? (
+                  <>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">Subtotal Compra:</span>
+                      <span>${(dte.resumen?.totalCompra || dte.resumen?.subTotal || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                      <span>Descuento:</span>
+                      <span>-${(dte.resumen?.totalDescu || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                      <span>Retención Impuesto Renta (10%):</span>
+                      <span>-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-muted-foreground print:text-black">Monto Subtotal:</span>
+                      <span>${(dte.resumen?.subTotalVentas || dte.resumen?.subTotal || dte.resumen?.totalSujeto || 0).toFixed(2)}</span>
+                    </div>
+                    {dte.resumen?.totalDescu > 0 && (
+                      <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
+                        <span>Descuento Comercial:</span>
+                        <span>-${dte.resumen.totalDescu.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {!isCD && (
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-muted-foreground print:text-black">IVA Gravado (13%):</span>
+                        <span>${totalIva.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
                 )}
-                <div className="flex justify-between py-0.5">
-                  <span className="text-muted-foreground print:text-black">IVA Gravado (13%):</span>
-                  <span>${(dte.resumen?.totalIva || 0).toFixed(2)}</span>
-                </div>
-                {dte.resumen?.reteRenta > 0 && (
-                  <div className="flex justify-between py-0.5 text-orange-600 print:text-black">
-                    <span>Retención Impuesto Renta (10%):</span>
-                    <span>-${dte.resumen.reteRenta.toFixed(2)}</span>
-                  </div>
-                )}
+                
                 <div className="h-px bg-border my-2 print:bg-black/20" />
                 <div className="flex justify-between text-base font-extrabold">
-                  <span className="text-primary print:text-black">TOTAL A PAGAR:</span>
-                  <span className="text-primary print:text-black">${(dte.resumen?.totalPagar || dte.resumen?.totalDonado || 0).toFixed(2)}</span>
+                  <span className="text-primary print:text-black">
+                    {tieneRetenciones ? 'LÍQUIDO A ENTREGAR:' : 'TOTAL A PAGAR:'}
+                  </span>
+                  <span className="text-primary print:text-black">
+                    ${(dte.resumen?.totalPagar || dte.resumen?.totalDonado || 0).toFixed(2)}
+                  </span>
                 </div>
               </div>
               {dte.resumen?.totalLetras && (

@@ -109,6 +109,11 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ codigo
 
   const tipo = TIPOS_DTE.find(t => t.codigo === dte.tipoDte);
   const isProcesado = dte.status === 'PROCESADO';
+  const isCCF = dte.tipoDte === '03';
+  const isFSE = dte.tipoDte === '14';
+  const isCD = dte.tipoDte === '15';
+  const totalIva = dte.resumen?.totalIva ?? dte.resumen?.tributos?.find((t: any) => t.codigo === '20')?.valor ?? 0;
+  const tieneRetenciones = isFSE || (isCCF && ((dte.resumen?.reteRenta || 0) > 0 || (dte.resumen?.ivaRete1 || 0) > 0 || (dte.resumen?.ivaPerci1 || 0) > 0));
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-10 px-4 sm:px-6 lg:px-8 print:bg-white print:p-0 print:min-h-0">
@@ -272,20 +277,86 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ codigo
 
             {/* Cuadro de Totales */}
             <div className="w-full sm:w-80 space-y-3 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Subtotal Ventas</span>
-                <span className="font-mono">${parseFloat(dte.resumen?.subTotalVentas || dte.totalGravada || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>IVA (13%)</span>
-                <span className="font-mono">${parseFloat(dte.resumen?.totalIva || dte.totalIva || 0).toFixed(2)}</span>
-              </div>
+              {isCCF ? (
+                <>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Subtotal Ventas Gravadas</span>
+                    <span className="font-mono">${(dte.resumen?.totalGravada || dte.resumen?.subTotal || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Ventas No Sujetas</span>
+                    <span className="font-mono">${(dte.resumen?.totalNoSuj || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Ventas Exentas</span>
+                    <span className="font-mono">${(dte.resumen?.totalExenta || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Descuento Comercial</span>
+                    <span className="font-mono">-${(dte.resumen?.totalDescu || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>IVA Gravado (13%)</span>
+                    <span className="font-mono">${totalIva.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-800 dark:text-slate-250 font-semibold border-t pt-1.5 mt-1.5 print:border-slate-300">
+                    <span>Monto Total Operación</span>
+                    <span className="font-mono">${(dte.resumen?.montoTotalOperacion || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Retención Impuesto Renta (10%)</span>
+                    <span className="font-mono">-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Retención IVA (1%)</span>
+                    <span className="font-mono">-${(dte.resumen?.ivaRete1 || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Percepción IVA (1%)</span>
+                    <span className="font-mono">+${(dte.resumen?.ivaPerci1 || 0).toFixed(2)}</span>
+                  </div>
+                </>
+              ) : isFSE ? (
+                <>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Subtotal Compra</span>
+                    <span className="font-mono">${(dte.resumen?.totalCompra || dte.resumen?.subTotal || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Descuento</span>
+                    <span className="font-mono">-${(dte.resumen?.totalDescu || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Retención Impuesto Renta (10%)</span>
+                    <span className="font-mono">-${(dte.resumen?.reteRenta || 0).toFixed(2)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <span>Subtotal Ventas</span>
+                    <span className="font-mono">${(dte.resumen?.subTotalVentas || dte.resumen?.subTotal || dte.totalGravada || 0).toFixed(2)}</span>
+                  </div>
+                  {dte.resumen?.totalDescu > 0 && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Descuento</span>
+                      <span className="font-mono">-${dte.resumen.totalDescu.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {!isCD && (
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <span>IVA (13%)</span>
+                      <span className="font-mono">${totalIva.toFixed(2)}</span>
+                    </div>
+                  )}
+                </>
+              )}
               
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
               
               <div className="flex justify-between text-lg font-bold text-slate-950 dark:text-slate-50 print:text-black">
-                <span>Monto Total</span>
-                <span className="text-emerald-500 font-mono">${parseFloat(dte.resumen?.totalPagar || dte.totalPagar || 0).toFixed(2)}</span>
+                <span>{tieneRetenciones ? 'Líquido a Entregar' : 'Monto Total'}</span>
+                <span className="text-emerald-500 font-mono">${(dte.resumen?.totalPagar || dte.resumen?.totalDonado || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
