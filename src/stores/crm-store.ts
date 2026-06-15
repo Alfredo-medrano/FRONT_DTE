@@ -6,11 +6,15 @@ import { persist } from 'zustand/middleware';
 export interface Cliente {
   id: string;
   nit: string;
+  tipoDocumento?: string; // e.g. '36' (NIT), '13' (DUI), etc.
   nrc?: string;
   nombre: string;
-  actividadEconomica?: string;
+  actividadEconomica?: string; // Código de actividad económica (MH)
   correo: string;
   telefono?: string;
+  departamento?: string; // Código de depto (e.g. '06')
+  municipio?: string;    // Código de municipio (e.g. '14')
+  complemento?: string;  // Dirección complemento
   createdAt: number;
 }
 

@@ -6,8 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { crearFacturaSchema, FacturaFormValues } from '@/lib/validators';
 import { calcularLineaProducto, calcularResumenFactura } from '@/lib/dte-calculator';
 import { fetchClient } from '@/lib/api-client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/lib/catalogos-mh';
+import { useCRMStore } from '@/stores/crm-store';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -210,8 +211,12 @@ function validarNrc(valor: string): 'valid' | 'invalid' | 'incomplete' {
 // ── Clave de LocalStorage para borradores ──
 const DRAFT_KEY = 'dte-borrador-factura';
 
-export default function NuevaFacturaPage() {
+function NuevaFacturaForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const clienteId = searchParams.get('cliente');
+  const { clientes: crmClientes } = useCRMStore();
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Preparando datos de facturación...');
@@ -268,6 +273,29 @@ export default function NuevaFacturaPage() {
     mode: 'onBlur', // Validate each field on blur for real-time feedback
   });
 
+  useEffect(() => {
+    if (clienteId && crmClientes && crmClientes.length > 0) {
+      const cli = crmClientes.find(c => c.id === clienteId);
+      if (cli) {
+        const tipoDoc = (cli.tipoDocumento || '36') as '36' | '13' | '02' | '03' | '37';
+        form.setValue('receptor.tipoDocumento', tipoDoc);
+        form.setValue('receptor.numDocumento', formatDocumento(cli.nit, tipoDoc));
+        form.setValue('receptor.nombre', cli.nombre);
+        form.setValue('receptor.correo', cli.correo);
+        form.setValue('receptor.telefono', cli.telefono || '');
+        if (cli.nrc) form.setValue('receptor.nrc', formatNrc(cli.nrc));
+        if (cli.actividadEconomica) {
+          form.setValue('receptor.codActividad', cli.actividadEconomica);
+          const act = ACTIVIDADES_ECONOMICAS.find(a => a.codigo === cli.actividadEconomica);
+          form.setValue('receptor.descActividad', act ? act.descripcion : 'No especificada');
+        }
+        if (cli.departamento) form.setValue('receptor.direccion.departamento', cli.departamento);
+        if (cli.municipio) form.setValue('receptor.direccion.municipio', cli.municipio);
+        if (cli.complemento) form.setValue('receptor.direccion.complemento', cli.complemento);
+      }
+    }
+  }, [clienteId, crmClientes, form]);
+
   const { fields: itemsFields, append: appendItem, remove: removeItem } = useFieldArray({
     control: form.control,
     name: 'items',
@@ -323,12 +351,44 @@ export default function NuevaFacturaPage() {
 
   // ── Módulo 2: Sugerencias de clientes ────────────────────
   const clienteSugerencias = useMemo(() => {
-    const doc = (watchAll.receptor?.numDocumento || '').replace(/-/g, '');
+    const doc = (watchAll.receptor?.numDocumento || '').replace(/-/g, '').toLowerCase();
     if (doc.length < 3) return [];
-    return CLIENTES_FRECUENTES.filter(c =>
-      c.numDocumento.includes(doc) || c.nombre.toLowerCase().includes(doc.toLowerCase())
+
+    // Filtrar y mapear clientes del CRM
+    const crmMatches = crmClientes.filter(c =>
+      (c.nit || '').replace(/-/g, '').includes(doc) ||
+      c.nombre.toLowerCase().includes(doc)
+    ).map(c => ({
+      numDocumento: c.nit,
+      tipoDocumento: (c.tipoDocumento || '36') as '36' | '13' | '02' | '03' | '37',
+      nombre: c.nombre,
+      correo: c.correo,
+      telefono: c.telefono || '',
+      nrc: c.nrc || '',
+      codActividad: c.actividadEconomica || '',
+      descActividad: ACTIVIDADES_ECONOMICAS.find(a => a.codigo === c.actividadEconomica)?.descripcion || 'No especificada',
+      direccion: {
+        departamento: c.departamento || '06',
+        municipio: c.municipio || '14',
+        complemento: c.complemento || '',
+      }
+    }));
+
+    // Filtrar clientes estáticos frecuentes
+    const mockMatches = CLIENTES_FRECUENTES.filter(c =>
+      c.numDocumento.includes(doc) || c.nombre.toLowerCase().includes(doc)
     );
-  }, [watchAll.receptor?.numDocumento]);
+
+    // Unir ambos (dando prioridad a los del CRM)
+    const combined = [...crmMatches];
+    mockMatches.forEach(m => {
+      if (!combined.some(c => c.numDocumento === m.numDocumento)) {
+        combined.push(m);
+      }
+    });
+
+    return combined;
+  }, [watchAll.receptor?.numDocumento, crmClientes]);
 
   // ── Módulo 3: Sugerencias de productos ───────────────────
   const productoSugerencias = useMemo(() => {
@@ -355,17 +415,27 @@ export default function NuevaFacturaPage() {
     form.setValue('receptor.nrc', formatted, { shouldValidate: false });
   };
 
-  const selectCliente = (cliente: typeof CLIENTES_FRECUENTES[0]) => {
+  const selectCliente = (cliente: {
+    numDocumento: string;
+    tipoDocumento: '36' | '13' | '02' | '03' | '37';
+    nombre: string;
+    correo?: string;
+    telefono?: string;
+    nrc?: string;
+    codActividad?: string;
+    descActividad?: string;
+    direccion?: { departamento: string; municipio: string; complemento: string };
+  }) => {
     const tipoDoc = cliente.tipoDocumento;
     form.setValue('receptor.tipoDocumento', tipoDoc);
     form.setValue('receptor.numDocumento', formatDocumento(cliente.numDocumento, tipoDoc));
     form.setValue('receptor.nombre', cliente.nombre);
-    form.setValue('receptor.correo', cliente.correo);
+    form.setValue('receptor.correo', cliente.correo || '');
     form.setValue('receptor.telefono', cliente.telefono || '');
     if (cliente.nrc) form.setValue('receptor.nrc', formatNrc(cliente.nrc));
     if (cliente.codActividad) {
       form.setValue('receptor.codActividad', cliente.codActividad);
-      form.setValue('receptor.descActividad', cliente.descActividad);
+      form.setValue('receptor.descActividad', cliente.descActividad || 'No especificada');
     }
     if (cliente.direccion) {
       form.setValue('receptor.direccion.departamento', cliente.direccion.departamento);
@@ -1977,5 +2047,19 @@ export default function NuevaFacturaPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+import { Suspense } from 'react';
+
+export default function NuevaFacturaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <NuevaFacturaForm />
+    </Suspense>
   );
 }
