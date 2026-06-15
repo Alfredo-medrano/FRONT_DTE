@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Building2, Mail, Phone, MapPin, FileText, Edit2, Save, X, Shield, 
   AlertTriangle, Wifi, WifiOff, RefreshCw, CheckCircle2, Lock, ShieldAlert,
-  Upload, Loader2, Key
+  Upload, Loader2, Key, Trash2
 } from 'lucide-react';
 import { useAPI } from '@/hooks/use-api';
 import { useEmisorStore } from '@/hooks/use-emisor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { fetchClient } from '@/lib/api-client';
+import { useSWRConfig } from 'swr';
 
 export default function MiEmpresaPage() {
   const { data, isLoading, mutate } = useAPI<any[]>('/api/dte/v2/mi-cuenta/emisores');
@@ -181,9 +182,10 @@ function ContingenciaControlCard() {
   const { data: state, mutate } = useAPI<any>('/api/dte/v2/mi-cuenta/contingencia', {
     refreshInterval: 10000 // cada 10s
   });
+  const { mutate: globalMutate } = useSWRConfig();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<'activar' | 'desactivar' | null>(null);
+  const [actionType, setActionType] = useState<'activar' | 'desactivar' | 'limpiar' | null>(null);
   const [password, setPassword] = useState('');
   const [tipoCont, setTipoCont] = useState(1);
   const [motivo, setMotivo] = useState('');
@@ -192,7 +194,7 @@ function ContingenciaControlCard() {
   const [syncResult, setSyncResult] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
 
-  const handleOpenDialog = (type: 'activar' | 'desactivar') => {
+  const handleOpenDialog = (type: 'activar' | 'desactivar' | 'limpiar') => {
     setActionType(type);
     setPassword('');
     setTipoCont(1);
@@ -212,9 +214,14 @@ function ContingenciaControlCard() {
     setIsSubmitting(true);
     setErrorMsg('');
     try {
-      const endpoint = actionType === 'activar' 
-        ? '/api/dte/v2/mi-cuenta/contingencia/activar' 
-        : '/api/dte/v2/mi-cuenta/contingencia/desactivar';
+      let endpoint = '';
+      if (actionType === 'activar') {
+        endpoint = '/api/dte/v2/mi-cuenta/contingencia/activar';
+      } else if (actionType === 'desactivar') {
+        endpoint = '/api/dte/v2/mi-cuenta/contingencia/desactivar';
+      } else {
+        endpoint = '/api/dte/v2/mi-cuenta/contingencia/limpiar';
+      }
 
       const payload = actionType === 'activar' 
         ? { passwordApi: password, tipoContingencia: tipoCont, motivoContingencia: motivo }
@@ -231,6 +238,7 @@ function ContingenciaControlCard() {
         }
         setDialogOpen(false);
         mutate();
+        globalMutate('/api/dte/v2/mi-cuenta/alertas-contingencia');
       } else {
         setErrorMsg(res.mensaje || 'Error al procesar la operación');
       }
@@ -323,7 +331,7 @@ function ContingenciaControlCard() {
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {state.contingenciaManual ? (
               <Button 
                 variant="destructive" 
@@ -345,15 +353,27 @@ function ContingenciaControlCard() {
             )}
 
             {state.dtesPendientes > 0 && (
-              <Button
-                variant="secondary"
-                disabled={syncing || !state.conexionMH}
-                className="h-11 px-4"
-                title="Sincronizar ahora"
-                onClick={handleManualSync}
-              >
-                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button
+                  variant="secondary"
+                  disabled={syncing || !state.conexionMH}
+                  className="flex-1 sm:flex-none h-11 px-4"
+                  title="Sincronizar ahora"
+                  onClick={handleManualSync}
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                </Button>
+                
+                <Button
+                  variant="destructive"
+                  className="flex-1 sm:flex-none h-11 px-4 bg-red-600 hover:bg-red-700 text-white font-medium"
+                  title="Detener y limpiar cola de contingencia"
+                  onClick={() => handleOpenDialog('limpiar')}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Limpiar Cola
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -389,22 +409,29 @@ function ContingenciaControlCard() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {actionType === 'activar' ? (
+                {actionType === 'activar' && (
                   <>
                     <ShieldAlert className="h-5 w-5 text-amber-500" />
                     Forzar Contingencia Manual
                   </>
-                ) : (
+                )}
+                {actionType === 'desactivar' && (
                   <>
                     <Wifi className="h-5 w-5 text-green-500" />
                     Desactivar Contingencia & Sincronizar
                   </>
                 )}
+                {actionType === 'limpiar' && (
+                  <>
+                    <Trash2 className="h-5 w-5 text-red-500" />
+                    Detener y Limpiar Cola de Contingencia
+                  </>
+                )}
               </DialogTitle>
               <DialogDescription>
-                {actionType === 'activar' 
-                  ? 'El sistema dejará de conectarse temporalmente con Hacienda y firmará todas las facturas de forma local e instantánea.'
-                  : 'Se restaurará la operación normal. El sistema enviará el Evento de Contingencia detallando todos los DTEs emitidos durante este periodo y los transmitirá a Hacienda.'}
+                {actionType === 'activar' && 'El sistema dejará de conectarse temporalmente con Hacienda y firmará todas las facturas de forma local e instantánea.'}
+                {actionType === 'desactivar' && 'Se restaurará la operación normal. El sistema enviará el Evento de Contingencia detallando todos los DTEs emitidos durante este periodo y los transmitirá a Hacienda.'}
+                {actionType === 'limpiar' && '⚠️ Esta acción eliminará permanentemente todos los DTEs locales que están en cola en estado CONTINGENCIA y no han sido transmitidos a Hacienda. Esta operación no se puede deshacer.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -470,10 +497,10 @@ function ContingenciaControlCard() {
                 >
                   Cancelar
                 </Button>
-                <Button 
+                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  variant={actionType === 'activar' ? 'default' : 'secondary'}
+                  variant={actionType === 'limpiar' ? 'destructive' : actionType === 'activar' ? 'default' : 'secondary'}
                 >
                   {isSubmitting ? 'Validando...' : 'Confirmar'}
                 </Button>
