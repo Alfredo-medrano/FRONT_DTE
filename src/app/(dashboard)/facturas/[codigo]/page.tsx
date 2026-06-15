@@ -105,38 +105,7 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-0">
-      {/* Estilos específicos para impresión */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          /* Ocultar barra de navegación, botones, breadcrumbs y sidebar de Next.js */
-          aside, nav, header, footer, button, .no-print, .hide-on-print {
-            display: none !important;
-          }
-          
-          /* Forzar cuerpo completo de impresión en blanco y negro fiscal */
-          body, main, div[class*="max-w-"] {
-            background: white !important;
-            color: black !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            box-shadow: none !important;
-          }
-
-          /* Asegurar que la tarjeta de impresión cubra todo el ancho sin bordes ni sombras */
-          .printable-card {
-            border: 1px solid #000 !important;
-            border-radius: 4px !important;
-            padding: 24px !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            box-shadow: none !important;
-            background: white !important;
-            color: black !important;
-          }
-        }
-      `}} />
+      {/* Print styles are defined in globals.css @media print */}
 
       {/* ── Banner de Contingencia o Cola ── */}
       {dte.status === 'ERROR' && (

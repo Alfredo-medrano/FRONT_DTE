@@ -262,6 +262,7 @@ export default function NuevaFacturaPage() {
   const form = useForm<FacturaFormValues>({
     resolver: zodResolver(crearFacturaSchema as any),
     defaultValues,
+    mode: 'onBlur', // Validate each field on blur for real-time feedback
   });
 
   const { fields: itemsFields, append: appendItem, remove: removeItem } = useFieldArray({

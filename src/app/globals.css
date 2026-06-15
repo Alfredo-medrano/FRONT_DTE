@@ -128,3 +128,38 @@
     @apply font-sans;
   }
 }
+
+/* ========================================
+ * PRINT STYLES — Factura Detail Page
+ * Moved from dangerouslySetInnerHTML to
+ * eliminate XSS surface area.
+ * ======================================== */
+@media print {
+  /* Hide navigation, buttons, breadcrumbs and sidebar */
+  aside, nav, header, footer, button, .no-print, .hide-on-print {
+    display: none !important;
+  }
+
+  /* Force full-width white background for printing */
+  body, main, div[class*="max-w-"] {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  /* Printable card: full width, no shadows, clean border */
+  .printable-card {
+    border: 1px solid #000 !important;
+    border-radius: 4px !important;
+    padding: 24px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+}
