@@ -12,6 +12,7 @@ import { useCRMStore } from '@/stores/crm-store';
 import { FormEncabezado } from '@/components/facturas/FormEncabezado';
 import { FormReceptor } from '@/components/facturas/FormReceptor';
 import { FormDetalles } from '@/components/facturas/FormDetalles';
+import { useAPI } from '@/hooks/use-api';
 import { PanelTotales } from '@/components/facturas/PanelTotales';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
@@ -143,15 +144,6 @@ const CLIENTES_FRECUENTES = [
   },
 ];
 
-// ── Módulo 3: Catálogo de productos (mock — reemplazar por llamada API) ──
-const CATALOGO_PRODUCTOS = [
-  { codigo: 'SERV-001', descripcion: 'Servicio de Consultoría Empresarial (hora)', precioUnitario: 75.00, uniMedida: 99 },
-  { codigo: 'PROD-100', descripcion: 'Laptop Dell Latitude 5540 i7 16GB', precioUnitario: 1250.00, uniMedida: 59 },
-  { codigo: 'PROD-101', descripcion: 'Monitor Samsung 27" 4K UHD', precioUnitario: 385.00, uniMedida: 59 },
-  { codigo: 'SERV-002', descripcion: 'Desarrollo de Software a Medida (hora)', precioUnitario: 55.00, uniMedida: 99 },
-  { codigo: 'PROD-200', descripcion: 'Resma de Papel Bond Carta (500 hojas)', precioUnitario: 4.50, uniMedida: 59 },
-  { codigo: 'PROD-201', descripcion: 'Toner HP LaserJet 26A Original', precioUnitario: 68.00, uniMedida: 59 },
-];
 
 // ── Módulo 1: Formateo de documentos con guiones automáticos ────────
 function formatDocumento(raw: string, tipoDoc: string): string {
@@ -220,6 +212,9 @@ function NuevaFacturaForm() {
   const searchParams = useSearchParams();
   const clienteId = searchParams.get('cliente');
   const { clientes: crmClientes } = useCRMStore();
+
+  const { data: apiProductos } = useAPI<any[]>('/api/dte/v2/productos');
+  const catalogoProductos = useMemo(() => Array.isArray(apiProductos) ? apiProductos : [], [apiProductos]);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -398,10 +393,10 @@ function NuevaFacturaForm() {
   const productoSugerencias = useMemo(() => {
     if (productoDropdownIndex === null || productoQuery.length < 2) return [];
     const q = productoQuery.toLowerCase();
-    return CATALOGO_PRODUCTOS.filter(p =>
+    return catalogoProductos.filter(p =>
       p.codigo.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q)
     );
-  }, [productoDropdownIndex, productoQuery]);
+  }, [productoDropdownIndex, productoQuery, catalogoProductos]);
 
   // ── Módulo 1+2: Handler de documento con máscara ─────────
   const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -450,7 +445,7 @@ function NuevaFacturaForm() {
   };
 
   // ── Módulo 3: Seleccionar producto ───────────────────────
-  const selectProducto = (producto: typeof CATALOGO_PRODUCTOS[0], index: number) => {
+  const selectProducto = (producto: any, index: number) => {
     form.setValue(`items.${index}.codigo`, producto.codigo);
     form.setValue(`items.${index}.descripcion`, producto.descripcion);
     form.setValue(`items.${index}.precioUnitario`, producto.precioUnitario);

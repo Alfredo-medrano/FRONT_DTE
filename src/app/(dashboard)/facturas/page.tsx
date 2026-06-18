@@ -16,6 +16,10 @@ export default function FacturasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [tipoDte, setTipoDte] = useState('');
+  const [status, setStatus] = useState('');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
 
   // BUG FIX (S4): Debounce de 300ms para no disparar un fetch por cada tecla.
   // Resetea la página a 1 cuando cambia el término de búsqueda.
@@ -31,7 +35,9 @@ export default function FacturasPage() {
   // pero NUNCA se incluyó en la URL del fetch, haciendo la búsqueda completamente inoperante.
   const apiUrl = `/api/dte/v2/facturas?page=${page}&limit=20${
     debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''
-  }`;
+  }${tipoDte ? `&tipoDte=${tipoDte}` : ''}${status ? `&status=${status}` : ''}${
+    fechaDesde ? `&fechaDesde=${fechaDesde}` : ''
+  }${fechaHasta ? `&fechaHasta=${fechaHasta}` : ''}`;
 
   const { data, isLoading } = useAPI<{ data: any[]; pagination?: { total: number; totalPages: number } }>(apiUrl);
 
@@ -75,7 +81,77 @@ export default function FacturasPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg border bg-muted/30 relative">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Tipo DTE</label>
+                <select
+                  value={tipoDte}
+                  onChange={(e) => { setTipoDte(e.target.value); setPage(1); }}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Todos</option>
+                  {TIPOS_DTE.map((t) => (
+                    <option key={t.codigo} value={t.codigo}>{t.nombreCorto} — {t.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Estado</label>
+                <select
+                  value={status}
+                  onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Todos</option>
+                  {Object.keys(DTE_STATUS_COLORS).map((st) => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Desde</label>
+                <Input
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => { setFechaDesde(e.target.value); setPage(1); }}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Hasta</label>
+                <Input
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => { setFechaHasta(e.target.value); setPage(1); }}
+                  className="h-9"
+                />
+              </div>
+
+              {(tipoDte || status || fechaDesde || fechaHasta) && (
+                <div className="col-span-1 sm:col-span-2 md:col-span-4 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTipoDte('');
+                      setStatus('');
+                      setFechaDesde('');
+                      setFechaHasta('');
+                      setPage(1);
+                    }}
+                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="rounded-md border">
             <Table>
               <TableHeader>

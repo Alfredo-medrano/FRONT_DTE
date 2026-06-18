@@ -19,15 +19,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 
-// Catálogo de productos mock (reemplazar por llamada API en producción)
-export const CATALOGO_PRODUCTOS = [
-  { codigo: 'SERV-001', descripcion: 'Servicio de Consultoría Empresarial (hora)', precioUnitario: 75.00, uniMedida: 99 },
-  { codigo: 'PROD-100', descripcion: 'Laptop Dell Latitude 5540 i7 16GB', precioUnitario: 1250.00, uniMedida: 59 },
-  { codigo: 'PROD-101', descripcion: 'Monitor Samsung 27" 4K UHD', precioUnitario: 385.00, uniMedida: 59 },
-  { codigo: 'SERV-002', descripcion: 'Desarrollo de Software a Medida (hora)', precioUnitario: 55.00, uniMedida: 99 },
-  { codigo: 'PROD-200', descripcion: 'Resma de Papel Bond Carta (500 hojas)', precioUnitario: 4.50, uniMedida: 59 },
-  { codigo: 'PROD-201', descripcion: 'Toner HP LaserJet 26A Original', precioUnitario: 68.00, uniMedida: 59 },
-];
+export interface ProductoCatalogo {
+  codigo: string;
+  descripcion: string;
+  precioUnitario: number;
+  uniMedida: number;
+}
 
 interface LineaCalculada {
   ventaGravada?: number;
@@ -50,8 +47,8 @@ interface Props {
   setProductoDropdownIndex: (v: number | null) => void;
   productoQuery: string;
   setProductoQuery: (v: string) => void;
-  productoSugerencias: typeof CATALOGO_PRODUCTOS;
-  selectProducto: (p: typeof CATALOGO_PRODUCTOS[0], index: number) => void;
+  productoSugerencias: ProductoCatalogo[];
+  selectProducto: (p: ProductoCatalogo, index: number) => void;
   handleDescuentoTab: (e: React.KeyboardEvent<HTMLInputElement>, index: number) => void;
   precioLabel: string;
 }

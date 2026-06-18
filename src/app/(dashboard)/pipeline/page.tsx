@@ -39,8 +39,13 @@ export default function PipelinePage() {
   return (
     <div className="space-y-6 h-full flex flex-col">
       <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Pipeline de Ventas</h2>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-3xl font-bold tracking-tight">Pipeline de Ventas</h2>
+            <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 text-[11px] font-medium py-0.5 px-2">
+              💾 Local
+            </Badge>
+          </div>
           <p className="text-muted-foreground">Flujo visual (Kanban) para tus oportunidades de negocio.</p>
         </div>
         <Button onClick={() => {
