@@ -16,6 +16,7 @@ import { useEmisorStore } from '@/hooks/use-emisor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { fetchClient } from '@/lib/api-client';
 import { useSWRConfig } from 'swr';
+import { DEPARTAMENTOS, getMunicipiosPorDepto } from '@/lib/catalogos-mh';
 
 export default function MiEmpresaPage() {
   const { data, isLoading, mutate } = useAPI<any[]>('/api/dte/v2/mi-cuenta/emisores');
@@ -24,6 +25,52 @@ export default function MiEmpresaPage() {
   const empresa = emisores[0] || null;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    nombreComercial: '',
+    correo: '',
+    telefono: '',
+    departamento: '06',
+    municipio: '14',
+    complemento: '',
+    codEstableMH: 'M001',
+    codPuntoVentaMH: 'P001',
+    tipoEstablecimiento: '01',
+  });
+
+  const startEditing = () => {
+    if (empresa) {
+      setFormData({
+        nombreComercial: empresa.nombreComercial || '',
+        correo: empresa.correo || '',
+        telefono: empresa.telefono || '',
+        departamento: empresa.departamento || '06',
+        municipio: empresa.municipio || '14',
+        complemento: empresa.complemento || '',
+        codEstableMH: empresa.codEstableMH || 'M001',
+        codPuntoVentaMH: empresa.codPuntoVentaMH || 'P001',
+        tipoEstablecimiento: empresa.tipoEstablecimiento || '01',
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!empresa) return;
+    setSaving(true);
+    try {
+      await fetchClient(`/api/dte/v2/mi-cuenta/emisores/${empresa.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData),
+      });
+      await mutate();
+      setIsEditing(false);
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar los datos');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -57,18 +104,22 @@ export default function MiEmpresaPage() {
             </div>
           </div>
           {!isEditing && (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+            <Button variant="outline" size="sm" onClick={startEditing} disabled={isLoading || !empresa}>
               <Edit2 className="h-3.5 w-3.5 mr-1.5" />
               Editar
             </Button>
           )}
           {isEditing && (
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => setIsEditing(false)}>
-                <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                )}
                 Guardar
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={saving}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -85,7 +136,21 @@ export default function MiEmpresaPage() {
                 </h3>
                 <InfoRow label="NIT" value={empresa.nit} mono />
                 <InfoRow label="NRC" value={empresa.nrc} mono />
-                <InfoRow label="Nombre Comercial" value={empresa.nombreComercial || '—'} />
+                
+                {isEditing ? (
+                  <div className="space-y-1">
+                    <Label htmlFor="nombreComercial" className="text-xs text-muted-foreground font-semibold uppercase">Nombre Comercial</Label>
+                    <Input
+                      id="nombreComercial"
+                      value={formData.nombreComercial}
+                      onChange={(e) => setFormData({ ...formData, nombreComercial: e.target.value })}
+                      className="h-9"
+                    />
+                  </div>
+                ) : (
+                  <InfoRow label="Nombre Comercial" value={empresa.nombreComercial || '—'} />
+                )}
+                
                 <InfoRow label="Actividad Económica" value={`${empresa.codActividad} — ${empresa.descActividad}`} />
                 <InfoRow
                   label="Ambiente"
@@ -110,11 +175,76 @@ export default function MiEmpresaPage() {
                   <MapPin className="h-4 w-4" />
                   Contacto y Dirección
                 </h3>
-                <InfoRow label="Correo" value={empresa.correo} icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />} />
-                <InfoRow label="Teléfono" value={empresa.telefono} icon={<Phone className="h-3.5 w-3.5 text-muted-foreground" />} />
-                <InfoRow label="Departamento" value={empresa.departamento} />
-                <InfoRow label="Municipio" value={empresa.municipio} />
-                <InfoRow label="Dirección" value={empresa.complemento} />
+                
+                {isEditing ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="correo" className="text-xs text-muted-foreground font-semibold uppercase">Correo</Label>
+                      <Input
+                        id="correo"
+                        type="email"
+                        value={formData.correo}
+                        onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="telefono" className="text-xs text-muted-foreground font-semibold uppercase">Teléfono</Label>
+                      <Input
+                        id="telefono"
+                        value={formData.telefono}
+                        onChange={(e) => setFormData({ ...formData, telefono: e.target.value.replace(/\D/g, '') })}
+                        className="h-9"
+                        maxLength={8}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="depto" className="text-xs text-muted-foreground font-semibold uppercase">Departamento</Label>
+                      <select
+                        id="depto"
+                        value={formData.departamento}
+                        onChange={(e) => setFormData({ ...formData, departamento: e.target.value, municipio: '' })}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        {DEPARTAMENTOS.map((d) => (
+                          <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="muni" className="text-xs text-muted-foreground font-semibold uppercase">Municipio</Label>
+                      <select
+                        id="muni"
+                        value={formData.municipio}
+                        onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        disabled={!formData.departamento}
+                      >
+                        <option value="">Seleccionar municipio...</option>
+                        {getMunicipiosPorDepto(formData.departamento).map((m) => (
+                          <option key={`${m.departamento}-${m.codigo}`} value={m.codigo}>{m.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="complemento" className="text-xs text-muted-foreground font-semibold uppercase">Dirección</Label>
+                      <Input
+                        id="complemento"
+                        value={formData.complemento}
+                        onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <InfoRow label="Correo" value={empresa.correo} icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />} />
+                    <InfoRow label="Teléfono" value={empresa.telefono} icon={<Phone className="h-3.5 w-3.5 text-muted-foreground" />} />
+                    <InfoRow label="Departamento" value={DEPARTAMENTOS.find(d => d.codigo === empresa.departamento)?.nombre || empresa.departamento} />
+                    <InfoRow label="Municipio" value={getMunicipiosPorDepto(empresa.departamento).find(m => m.codigo === empresa.municipio)?.nombre || empresa.municipio} />
+                    <InfoRow label="Dirección" value={empresa.complemento} />
+                  </>
+                )}
               </div>
 
               {/* Códigos MH */}
@@ -123,11 +253,52 @@ export default function MiEmpresaPage() {
                   <Building2 className="h-4 w-4" />
                   Configuración de Establecimiento
                 </h3>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <InfoRow label="Código Establecimiento" value={empresa.codEstableMH || 'M001'} mono />
-                  <InfoRow label="Punto de Venta" value={empresa.codPuntoVentaMH || 'P001'} mono />
-                  <InfoRow label="Tipo Establecimiento" value={empresa.tipoEstablecimiento || '01'} mono />
-                </div>
+                
+                {isEditing ? (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="codEstableMH" className="text-xs text-muted-foreground font-semibold uppercase">Código Establecimiento</Label>
+                      <Input
+                        id="codEstableMH"
+                        value={formData.codEstableMH}
+                        onChange={(e) => setFormData({ ...formData, codEstableMH: e.target.value })}
+                        className="h-9 font-mono"
+                        maxLength={4}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="codPuntoVentaMH" className="text-xs text-muted-foreground font-semibold uppercase">Punto de Venta</Label>
+                      <Input
+                        id="codPuntoVentaMH"
+                        value={formData.codPuntoVentaMH}
+                        onChange={(e) => setFormData({ ...formData, codPuntoVentaMH: e.target.value })}
+                        className="h-9 font-mono"
+                        maxLength={4}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="tipoEstablecimiento" className="text-xs text-muted-foreground font-semibold uppercase">Tipo Establecimiento</Label>
+                      <select
+                        id="tipoEstablecimiento"
+                        value={formData.tipoEstablecimiento}
+                        onChange={(e) => setFormData({ ...formData, tipoEstablecimiento: e.target.value })}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="01">01. Sucursal / Casa Matriz</option>
+                        <option value="02">02. Oficina</option>
+                        <option value="03">03. Bodega</option>
+                        <option value="04">04. Punto de Venta</option>
+                        <option value="07">07. Otro</option>
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <InfoRow label="Código Establecimiento" value={empresa.codEstableMH || 'M001'} mono />
+                    <InfoRow label="Punto de Venta" value={empresa.codPuntoVentaMH || 'P001'} mono />
+                    <InfoRow label="Tipo Establecimiento" value={empresa.tipoEstablecimiento || '01'} mono />
+                  </div>
+                )}
               </div>
             </div>
           ) : (

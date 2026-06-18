@@ -15,8 +15,10 @@ export default function IntegracionesPage() {
 
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
+    setError(null);
     try {
       const resp = await fetchClient<any>('/api/dte/v2/mi-cuenta/api-keys', {
         method: 'POST',
@@ -26,13 +28,10 @@ export default function IntegracionesPage() {
         setNewKey(resp.datos.apiKey);
         mutate();
       } else {
-        // Fallback local para demo
-        const generatedKey = `sk_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`;
-        setNewKey(generatedKey);
+        setError(resp?.mensaje || 'No se pudo obtener la API Key del servidor.');
       }
-    } catch {
-      const generatedKey = `sk_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`;
-      setNewKey(generatedKey);
+    } catch (err: any) {
+      setError(err.message || 'Error al intentar crear la API Key. Por favor intente más tarde.');
     }
   };
 
@@ -64,6 +63,25 @@ export default function IntegracionesPage() {
           Conecta tu sistema de punto de venta, ERP o cualquier software con tu facturación.
         </p>
       </div>
+
+      {error && (
+        <Card className="border-red-500/20 bg-red-500/5 text-red-600">
+          <CardContent className="flex items-center gap-3 p-4">
+            <ShieldAlert className="h-5 w-5 text-red-500 shrink-0" />
+            <div className="flex-1 text-sm font-semibold">
+              {error}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setError(null)}
+              className="text-red-600 hover:bg-red-500/10 h-8"
+            >
+              Cerrar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Cómo funciona ──────────── */}
       <Card className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-blue-500/20">
