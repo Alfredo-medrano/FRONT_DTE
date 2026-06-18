@@ -30,19 +30,21 @@ export default function ClientesPage() {
       let agregados = 0;
       facturas.forEach((f: any) => {
         if (f.receptorNombre && f.receptorNombre !== 'Consumidor Final') {
-          // Extraer documento (por backend suele venir en receptorNumDoc o el cliente puede tener NIT)
-          const doc = f.receptorNumDoc || '00000000-0';
+          const doc = f.receptorNumDoc || '';
           if (!clientes.some((c: Cliente) => c.nit === doc || c.nombre === f.receptorNombre)) {
+            // BUG FIX (M3): Eliminar hardcodes de datos que no tenemos.
+            // Usar strings vacíos para campos opcionales en lugar de valores falsos
+            // ('N/A', '06', '14') que contaminaban la BD con datos incorrectos.
             addCliente({
               nombre: f.receptorNombre,
-              tipoDocumento: '36',
+              tipoDocumento: f.receptorTipoDoc || '36',
               nit: doc,
               correo: f.receptorCorreo || '',
-              telefono: 'N/A',
-              actividadEconomica: 'No especificada',
-              departamento: '06',
-              municipio: '14',
-              complemento: ''
+              telefono: f.receptorTelefono || '',
+              actividadEconomica: f.receptorCodActividad || '',
+              departamento: f.receptorDepartamento || '',
+              municipio: f.receptorMunicipio || '',
+              complemento: f.receptorComplemento || '',
             });
             agregados++;
           }

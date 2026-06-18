@@ -10,7 +10,11 @@ export function useAPI<T>(endpoint: string | null, options?: SWRConfiguration) {
 
   return {
     data: data as T | undefined,
-    isLoading: !error && !data,
+    // BUG FIX (S7): isLoading debe ser true mientras SWR est\u00e1 fetching sin datos.
+    // El patr\u00f3n anterior (!error && !data) fallaba en revalidaciones: si hab\u00eda un
+    // error cacheado y data era undefined, retornaba false (isLoading=false)
+    // incorrectamente, haciendo que el spinner desapareciera antes de los datos.
+    isLoading: isValidating && !data,
     isError: error,
     isValidating,
     mutate

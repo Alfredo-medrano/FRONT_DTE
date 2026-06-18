@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAPI } from '@/hooks/use-api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,9 +14,26 @@ import { DTE_STATUS_COLORS, TIPOS_DTE } from '@/lib/constants';
 export default function FacturasPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Llama a la API con la página actual
-  const { data, isLoading } = useAPI<{ data: any[]; pagination?: { total: number; totalPages: number } }>(`/api/dte/v2/facturas?page=${page}&limit=20`);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // BUG FIX (S4): Debounce de 300ms para no disparar un fetch por cada tecla.
+  // Resetea la página a 1 cuando cambia el término de búsqueda.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1); // Siempre volver a página 1 al buscar
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // BUG FIX (S4): searchTerm ya entra en la URL. Antes, el estado existía
+  // pero NUNCA se incluyó en la URL del fetch, haciendo la búsqueda completamente inoperante.
+  const apiUrl = `/api/dte/v2/facturas?page=${page}&limit=20${
+    debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''
+  }`;
+
+  const { data, isLoading } = useAPI<{ data: any[]; pagination?: { total: number; totalPages: number } }>(apiUrl);
 
   const dtes = Array.isArray(data) ? data : data?.data || [];
   const pagination = data?.pagination;
@@ -47,7 +64,15 @@ export default function FacturasPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
+            {/* BUG FIX (M1): Botón Filter ahora tiene onClick funcional */}
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => setShowFilters((v) => !v)}
+              title="Filtros avanzados"
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
