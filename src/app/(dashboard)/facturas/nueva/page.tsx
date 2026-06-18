@@ -606,14 +606,15 @@ function NuevaFacturaForm() {
       }
 
       if (payload.tipoDte === '04') {
-        // NR: usa tipoDocumento y numDocumento
+        // NR: usa tipoDocumento y numDocumento (sin nit)
         if (!payload.receptor.numDocumento && payload.receptor.nit) {
           payload.receptor.numDocumento = payload.receptor.nit;
         }
         if (payload.receptor.numDocumento) {
-          payload.receptor.numDocumento = payload.receptor.numDocumento.replace(/-/g, '');
+          if (payload.receptor.tipoDocumento !== '13') {
+            payload.receptor.numDocumento = payload.receptor.numDocumento.replace(/-/g, '');
+          }
         }
-        payload.receptor.tipoDocumento = payload.receptor.tipoDocumento || '36';
         delete payload.receptor.nit;
       }
 
@@ -677,7 +678,7 @@ function NuevaFacturaForm() {
       setLoadingMessage(res.enCola ? 'Guardada en cola con éxito...' : '¡Documento emitido con éxito!');
 
       const targetCodigo = (res.datos as any)?.codigoGeneracion || res.codigoGeneracion || '';
-      
+
       // Delay de 500ms para que el usuario perciba el éxito de forma elegante
       setTimeout(() => {
         router.push(`/facturas/${targetCodigo}`);
@@ -738,7 +739,7 @@ function NuevaFacturaForm() {
   const tipoDocReceptor = watchAll.receptor?.tipoDocumento || '36';
   const docPlaceholder = tipoDocReceptor === '13' ? '00000000-0'
     : (tipoDocReceptor === '36' || esFiscal) ? '0614-000000-000-0'
-    : 'N° documento';
+      : 'N° documento';
   const docMaxLength = tipoDocReceptor === '13' ? 10 : tipoDocReceptor === '36' ? 17 : 25;
 
   return (
@@ -786,13 +787,12 @@ function NuevaFacturaForm() {
         ].map((s, idx) => (
           <div key={idx} className="flex items-center flex-1 gap-1">
             <div
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium flex-1 transition-all ${
-                step === idx + 1
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium flex-1 transition-all ${step === idx + 1
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : step > idx + 1
                     ? 'bg-primary/10 text-primary'
                     : 'bg-muted text-muted-foreground'
-              }`}
+                }`}
             >
               <s.icon className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{s.label}</span>
