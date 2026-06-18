@@ -261,7 +261,7 @@ function NuevaFacturaForm() {
       direccion: { departamento: '06', municipio: '14', complemento: '' },
     },
     items: [
-      { descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' },
+      { descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 59, codigo: '' },
     ],
     observaciones: '',
     documentoRelacionado: undefined,
@@ -455,6 +455,7 @@ function NuevaFacturaForm() {
     form.setValue(`items.${index}.descripcion`, producto.descripcion);
     form.setValue(`items.${index}.precioUnitario`, producto.precioUnitario);
     form.setValue(`items.${index}.uniMedida`, producto.uniMedida);
+    form.setValue(`items.${index}.tipoItem`, producto.uniMedida === 99 ? 2 : 1);
     setProductoDropdownIndex(null);
     setProductoQuery('');
   };
@@ -463,7 +464,7 @@ function NuevaFacturaForm() {
   const handleDescuentoTab = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
     if (e.key === 'Tab' && !e.shiftKey && index === itemsFields.length - 1) {
       e.preventDefault();
-      appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' });
+      appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 59, codigo: '' });
       setTimeout(() => {
         document.getElementById(`item-codigo-${index + 1}`)?.focus();
       }, 60);

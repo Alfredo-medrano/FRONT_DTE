@@ -96,7 +96,7 @@ export function FormDetalles({
             variant="outline"
             size="sm"
             onClick={() =>
-              appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 99, codigo: '' })
+              appendItem({ descripcion: '', cantidad: 1, precioUnitario: 0, descuento: 0, tipoItem: 1, uniMedida: 59, codigo: '' })
             }
           >
             <Plus className="h-4 w-4 mr-1.5" />
@@ -151,7 +151,11 @@ export function FormDetalles({
               <select
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 value={watchAll.items[index]?.tipoItem ?? 1}
-                onChange={(e) => form.setValue(`items.${index}.tipoItem`, parseInt(e.target.value, 10))}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  form.setValue(`items.${index}.tipoItem`, val);
+                  form.setValue(`items.${index}.uniMedida`, val === 2 ? 99 : 59);
+                }}
               >
                 <option value={1}>Bien</option>
                 <option value={2}>Servicio</option>
