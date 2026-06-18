@@ -15,9 +15,22 @@ export function useIdleTimeout(timeoutMinutes = 5) {
     // Sólo iniciamos el timer si el usuario está autenticado
     if (!isReady) return;
 
-    const logout = () => {
-      clearKeys();
-      router.push('/setup');
+    const logout = async () => {
+      try {
+        // SECURITY FIX (S2): Invalidar la cookie httpOnly en el servidor ANTES de
+        // limpiar el store local. Sin esta llamada, la cookie sobrevivía al clearKeys()
+        // y el usuario seguía autenticado al recargar la página.
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include', // Envía la cookie para que el servidor la invalide
+        });
+      } catch {
+        // Si el servidor no responde, procedemos igual con el logout local.
+        // El token expirará solo en 24h, pero la sesión UI queda limpia.
+      } finally {
+        clearKeys();
+        router.push('/setup');
+      }
     };
 
     const resetTimer = () => {

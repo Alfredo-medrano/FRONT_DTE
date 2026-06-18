@@ -13,23 +13,52 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const isReady = useAuthStore((state) => state.isReady);
+  const setReady = useAuthStore((state) => state.setReady);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   // Auto-logout: cerrar sesión tras 5 minutos sin actividad
   useIdleTimeout(5);
 
   useEffect(() => {
     setMounted(true);
+
+    // SECURITY FIX (S3): Con isReady: false inicial, verificamos la cookie de sesión
+    // contra el servidor al montar el layout. Esto permite que una recarga de página
+    // no expulse a un usuario con sesión válida.
+    const checkSession = async () => {
+      try {
+        const resp = await fetch('/api/auth/me', { credentials: 'include' });
+        if (resp.ok) {
+          setReady();
+        } else {
+          // Sin sesión válida → redirigir a login
+          router.push('/setup');
+        }
+      } catch {
+        router.push('/setup');
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    // Si ya tenemos isReady (login reciente en la misma sesión de JS), no re-verificar
+    if (!isReady) {
+      checkSession();
+    } else {
+      setChecking(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (mounted && !isReady) {
+    if (mounted && !checking && !isReady) {
       router.push('/setup');
     }
-  }, [mounted, isReady, router]);
+  }, [mounted, checking, isReady, router]);
 
-  if (!mounted || !isReady) {
+  if (!mounted || checking || !isReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <div className="animate-pulse flex flex-col items-center">

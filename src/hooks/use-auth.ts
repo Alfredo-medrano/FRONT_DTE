@@ -14,6 +14,12 @@ import { create } from 'zustand';
  *
  * Authenticated API calls use `credentials: 'include'` to send
  * the cookie automatically — no Authorization header needed.
+ *
+ * SECURITY FIX (S3): isReady starts as FALSE.
+ * Previously was TRUE, causing the idle timeout to start running on
+ * unauthenticated pages like /setup (before any login), which could
+ * trigger unexpected redirects after 5 minutes of inactivity.
+ * isReady is only set to TRUE after a successful login via setReady().
  */
 
 interface AuthState {
@@ -26,7 +32,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()((set) => ({
   adminKey: null,
-  isReady: true,
+  isReady: false,  // SECURITY FIX (S3): false until explicitly set by login
   setAdminKey: (adminKey: string) => {
     set({ adminKey, isReady: true });
   },
@@ -37,3 +43,4 @@ export const useAuthStore = create<AuthState>()((set) => ({
     set({ adminKey: null, isReady: false });
   },
 }));
+
