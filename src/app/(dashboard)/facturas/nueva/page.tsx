@@ -593,8 +593,8 @@ function NuevaFacturaForm() {
         }
       }
 
-      if (payload.tipoDte === '03' || payload.tipoDte === '04') {
-        // CCF/NR: usa nit (sin tipoDocumento/numDocumento separados)
+      if (payload.tipoDte === '03') {
+        // CCF: usa nit (sin tipoDocumento/numDocumento separados)
         if (!payload.receptor.nit && payload.receptor.numDocumento) {
           payload.receptor.nit = payload.receptor.numDocumento;
         }
@@ -603,6 +603,18 @@ function NuevaFacturaForm() {
         }
         payload.receptor.tipoDocumento = '36';
         delete payload.receptor.numDocumento;
+      }
+
+      if (payload.tipoDte === '04') {
+        // NR: usa tipoDocumento y numDocumento
+        if (!payload.receptor.numDocumento && payload.receptor.nit) {
+          payload.receptor.numDocumento = payload.receptor.nit;
+        }
+        if (payload.receptor.numDocumento) {
+          payload.receptor.numDocumento = payload.receptor.numDocumento.replace(/-/g, '');
+        }
+        payload.receptor.tipoDocumento = payload.receptor.tipoDocumento || '36';
+        delete payload.receptor.nit;
       }
 
       if (payload.tipoDte === '05' || payload.tipoDte === '06') {
