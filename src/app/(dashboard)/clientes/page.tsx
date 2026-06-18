@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCRMStore, Cliente } from '@/stores/crm-store';
+import { useCRMStore, useCRMSync, Cliente } from '@/stores/crm-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,54 +10,21 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Search, Trash2, Edit, FileText, DownloadCloud, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { fetchClient } from '@/lib/api-client';
 import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/lib/catalogos-mh';
 
 export default function ClientesPage() {
   const { clientes, addCliente, updateCliente, deleteCliente } = useCRMStore();
+  // BUG FIX (S5): useCRMSync sincroniza clientes desde el servidor al montar.
+  // Ya no depende exclusivamente de localStorage (multi-device safe).
+  const { syncing: isSyncing, refresh: handleSyncAPI } = useCRMSync();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const resp = await fetchClient<any>('/api/dte/v2/facturas?limit=500');
-      const facturas = Array.isArray(resp) ? resp : resp?.data || resp?.datos || [];
-      
-      let agregados = 0;
-      facturas.forEach((f: any) => {
-        if (f.receptorNombre && f.receptorNombre !== 'Consumidor Final') {
-          const doc = f.receptorNumDoc || '';
-          if (!clientes.some((c: Cliente) => c.nit === doc || c.nombre === f.receptorNombre)) {
-            // BUG FIX (M3): Eliminar hardcodes de datos que no tenemos.
-            // Usar strings vacíos para campos opcionales en lugar de valores falsos
-            // ('N/A', '06', '14') que contaminaban la BD con datos incorrectos.
-            addCliente({
-              nombre: f.receptorNombre,
-              tipoDocumento: f.receptorTipoDoc || '36',
-              nit: doc,
-              correo: f.receptorCorreo || '',
-              telefono: f.receptorTelefono || '',
-              actividadEconomica: f.receptorCodActividad || '',
-              departamento: f.receptorDepartamento || '',
-              municipio: f.receptorMunicipio || '',
-              complemento: f.receptorComplemento || '',
-            });
-            agregados++;
-          }
-        }
-      });
-      alert(`Sincronización completada. Se importaron ${agregados} clientes nuevos desde tus facturas históricas.`);
-    } catch (e) {
-      console.error(e);
-      alert('Error al sincronizar clientes. Revisa tu conexión.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  // handleSync ahora delega al useCRMSync hook que llama GET /api/dte/v2/clientes
+  // y reemplaza el store completo con datos del servidor (multi-device safe).
+  const handleSync = () => handleSyncAPI();
 
   const [formData, setFormData] = useState<Partial<Cliente>>({
     nombre: '',
