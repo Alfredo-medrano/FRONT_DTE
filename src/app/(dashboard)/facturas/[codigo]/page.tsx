@@ -101,13 +101,13 @@ export default function FacturaDetallePage({ params }: { params: Promise<{ codig
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
 
   // ── Emisor ────────────────────────────────────────────────
-  const emisorNombre = dteRes?.local?.emisor?.nombre || 'TUFACTURATECH S.A. DE C.V.';
-  const emisorNit = dteRes?.local?.emisor?.nit || '0614-230823-101-9';
-  const emisorNrc = dteRes?.local?.emisor?.nrc || '304928-1';
-  const emisorDireccion = dteRes?.local?.emisor?.direccion || 'Alameda Roosevelt, Edificio Centro de Negocios, Nivel 4, San Salvador';
-  const emisorActividad = dteRes?.local?.emisor?.nombreComercial || 'Servicios Tecnológicos de Facturación';
-  const emisorCorreo = dteRes?.local?.emisor?.correo || 'soporte@tufacturatech.sv';
-  const emisorTelefono = dteRes?.local?.emisor?.telefono || '2255-8888';
+  const emisorNombre = dteRes?.dte?.emisor?.nombreComercial || dteRes?.dte?.emisor?.nombre || dteRes?.local?.emisor?.nombre || 'TUFACTURATECH S.A. DE C.V.';
+  const emisorNit = dteRes?.dte?.emisor?.nit || dteRes?.local?.emisor?.nit || '0614-230823-101-9';
+  const emisorNrc = dteRes?.dte?.emisor?.nrc || dteRes?.local?.emisor?.nrc || '304928-1';
+  const emisorDireccion = dteRes?.dte?.emisor?.direccion?.complemento || dteRes?.local?.emisor?.direccion || 'Alameda Roosevelt, Edificio Centro de Negocios, Nivel 4, San Salvador';
+  const emisorActividad = dteRes?.dte?.emisor?.descActividad || dteRes?.local?.emisor?.nombreComercial || 'Servicios Tecnológicos de Facturación';
+  const emisorCorreo = dteRes?.dte?.emisor?.correo || dteRes?.local?.emisor?.correo || 'soporte@tufacturatech.sv';
+  const emisorTelefono = dteRes?.dte?.emisor?.telefono || dteRes?.local?.emisor?.telefono || '2255-8888';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-0">
