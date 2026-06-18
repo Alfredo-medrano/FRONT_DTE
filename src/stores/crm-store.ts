@@ -90,19 +90,25 @@ export const useCRMStore = create<CRMStore>()(
           clientes: state.clientes.map((c) => c.id === id ? { ...c, ...cli } : c),
         }));
         // Solo sincronizar si no es un id temporal local
-        if (!id.startsWith('local_') && !id.startsWith('temp_') && !id.startsWith('dte_')) {
+        if (!id.startsWith('local_') && !id.startsWith('temp_')) {
           try {
-            await fetchClient(`/api/dte/v2/clientes/${id}`, {
+            const resp = await fetchClient<{ cliente: Cliente }>(`/api/dte/v2/clientes/${id}`, {
               method: 'PUT',
               body: JSON.stringify(cli),
             });
+            const serverCliente = resp.cliente ?? resp as any;
+            if (serverCliente && serverCliente.id && serverCliente.id !== id) {
+              set((state) => ({
+                clientes: state.clientes.map((c) => c.id === id ? { ...c, id: serverCliente.id, _source: 'manual' } : c),
+              }));
+            }
           } catch { /* silently keep local */ }
         }
       },
 
       deleteCliente: async (id) => {
         set((state) => ({ clientes: state.clientes.filter((c) => c.id !== id) }));
-        if (!id.startsWith('local_') && !id.startsWith('temp_') && !id.startsWith('dte_')) {
+        if (!id.startsWith('local_') && !id.startsWith('temp_')) {
           try {
             await fetchClient(`/api/dte/v2/clientes/${id}`, { method: 'DELETE' });
           } catch { /* silently keep deleted locally */ }
