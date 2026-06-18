@@ -1,16 +1,29 @@
 {
-  "name": "DTE SaaS",
-  "short_name": "DTE",
-  "description": "Middleware de Facturación Electrónica El Salvador",
-  "start_url": "/",
+  "name": "DTE SaaS — Facturación Electrónica",
+  "short_name": "DTE SaaS",
+  "description": "Middleware de Facturación Electrónica El Salvador — Emisión y gestión de DTEs",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/favicon.ico",
       "sizes": "16x16 32x32 64x64",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
