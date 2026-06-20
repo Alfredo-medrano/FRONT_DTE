@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from './use-auth';
+import { fetchClient } from '@/lib/api-client';
 
 export function useIdleTimeout(timeoutMinutes = 5) {
   const router = useRouter();
@@ -20,9 +21,8 @@ export function useIdleTimeout(timeoutMinutes = 5) {
         // SECURITY FIX (S2): Invalidar la cookie httpOnly en el servidor ANTES de
         // limpiar el store local. Sin esta llamada, la cookie sobrevivía al clearKeys()
         // y el usuario seguía autenticado al recargar la página.
-        await fetch('/api/auth/logout', {
+        await fetchClient('/api/auth/logout', {
           method: 'POST',
-          credentials: 'include', // Envía la cookie para que el servidor la invalide
         });
       } catch {
         // Si el servidor no responde, procedemos igual con el logout local.

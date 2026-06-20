@@ -18,6 +18,7 @@ import { useAuthStore } from '@/hooks/use-auth';
 import { useEmisorStore } from '@/hooks/use-emisor';
 import { useAPI } from '@/hooks/use-api';
 import { useState, useEffect } from 'react';
+import { fetchClient } from '@/lib/api-client';
 
 // Mapeo de rutas a títulos amigables para el cliente
 const PAGE_TITLES: Record<string, string> = {
@@ -87,10 +88,16 @@ export function Header() {
     return () => clearInterval(interval);
   }, [alerts?.proximoVencer]);
 
-  const handleLogout = () => {
-    clearKeys();
-    clearEmisor();
-    router.push('/setup');
+  const handleLogout = async () => {
+    try {
+      await fetchClient('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      // Ignorar fallas de red para proceder con logout local
+    } finally {
+      clearKeys();
+      clearEmisor();
+      router.push('/setup');
+    }
   };
 
   // Obtener título de página amigable

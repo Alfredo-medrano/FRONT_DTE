@@ -6,6 +6,7 @@ import { useAuthStore } from '@/hooks/use-auth';
 import { useIdleTimeout } from '@/hooks/use-idle-timeout';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { fetchClient } from '@/lib/api-client';
 
 export default function DashboardLayout({
   children,
@@ -29,8 +30,8 @@ export default function DashboardLayout({
     // no expulse a un usuario con sesión válida.
     const checkSession = async () => {
       try {
-        const resp = await fetch('/api/auth/me', { credentials: 'include' });
-        if (resp.ok) {
+        const resp = await fetchClient<any>('/api/auth/me');
+        if (resp?.exito) {
           setReady();
         } else {
           // Sin sesión válida → redirigir a login
