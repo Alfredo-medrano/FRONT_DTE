@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCRMStore, PipelineCard } from '@/stores/crm-store';
+import { useEmisorStore } from '@/hooks/use-emisor';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +14,15 @@ const COLUMNAS = ['Prospecto', 'Contactado', 'Propuesta', 'Negociacion', 'Cerrad
 
 export default function PipelinePage() {
   const { cards, moveCard, addCard, deleteCard, clientes } = useCRMStore();
+  const { emisorId } = useEmisorStore();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  // Filtrar tarjetas por el emisor actual
+  const filteredCards = useMemo(() => {
+    const activeEmisor = emisorId || 'default';
+    return cards.filter((c: PipelineCard) => c.emisorId === activeEmisor);
+  }, [cards, emisorId]);
 
   useEffect(() => {
     setMounted(true);
@@ -69,7 +77,7 @@ export default function PipelinePage() {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-6 h-full min-h-[500px] items-start">
             {COLUMNAS.map(colId => {
-              const colCards = cards.filter((c: PipelineCard) => c.columna === colId);
+              const colCards = filteredCards.filter((c: PipelineCard) => c.columna === colId);
               const totalColumna = colCards.reduce((acc: number, current: PipelineCard) => acc + current.montoEstimado, 0);
 
               return (

@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useEffect } from 'react';
 import { fetchClient } from '@/lib/api-client';
+import { useEmisorStore } from '@/hooks/use-emisor';
 
 export interface Cliente {
   id: string;
@@ -28,6 +29,7 @@ export interface PipelineCard {
   montoEstimado: number;
   columna: 'Prospecto' | 'Contactado' | 'Propuesta' | 'Negociacion' | 'Cerrado';
   createdAt: number;
+  emisorId?: string;
 }
 
 interface CRMStore {
@@ -115,9 +117,12 @@ export const useCRMStore = create<CRMStore>()(
         }
       },
 
-      addCard: (card) => set((state) => ({
-        cards: [...state.cards, { ...card, id: crypto.randomUUID(), createdAt: Date.now() }]
-      })),
+      addCard: (card) => set((state) => {
+        const emisorId = useEmisorStore.getState().emisorId || 'default';
+        return {
+          cards: [...state.cards, { ...card, id: crypto.randomUUID(), createdAt: Date.now(), emisorId }]
+        };
+      }),
       updateCard: (id, updates) => set((state) => ({
         cards: state.cards.map((c) => c.id === id ? { ...c, ...updates } : c)
       })),

@@ -9,6 +9,7 @@ import { fetchClient } from '@/lib/api-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/lib/catalogos-mh';
 import { useCRMStore } from '@/stores/crm-store';
+import { useEmisorStore } from '@/hooks/use-emisor';
 import { FormEncabezado } from '@/components/facturas/FormEncabezado';
 import { FormReceptor } from '@/components/facturas/FormReceptor';
 import { FormDetalles } from '@/components/facturas/FormDetalles';
@@ -204,14 +205,13 @@ function validarNrc(valor: string): 'valid' | 'invalid' | 'incomplete' {
   return 'incomplete';
 }
 
-// ── Clave de LocalStorage para borradores ──
-const DRAFT_KEY = 'dte-borrador-factura';
-
 function NuevaFacturaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clienteId = searchParams.get('cliente');
   const { clientes: crmClientes } = useCRMStore();
+  const { emisorId } = useEmisorStore();
+  const DRAFT_KEY = `dte-borrador-factura-${emisorId || 'default'}`;
 
   const { data: apiProductos } = useAPI<any[]>('/api/dte/v2/productos');
   const catalogoProductos = useMemo(() => Array.isArray(apiProductos) ? apiProductos : [], [apiProductos]);
@@ -473,7 +473,7 @@ function NuevaFacturaForm() {
       setBorradorMsg('✓ Borrador guardado');
       setTimeout(() => setBorradorMsg(null), 3000);
     } catch { /* localStorage no disponible */ }
-  }, [form]);
+  }, [form, DRAFT_KEY]);
 
   const restoreDraft = useCallback(() => {
     try {
@@ -486,12 +486,12 @@ function NuevaFacturaForm() {
         setTimeout(() => setBorradorMsg(null), 3000);
       }
     } catch { /* ignore */ }
-  }, [form]);
+  }, [form, DRAFT_KEY]);
 
   const dismissDraft = useCallback(() => {
     localStorage.removeItem(DRAFT_KEY);
     setShowDraftBanner(false);
-  }, []);
+  }, [DRAFT_KEY]);
 
   const clearForm = useCallback(() => {
     form.reset(defaultValues);
@@ -503,7 +503,7 @@ function NuevaFacturaForm() {
     setBorradorMsg('✓ Formulario limpiado');
     setTimeout(() => setBorradorMsg(null), 3000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form]);
+  }, [form, DRAFT_KEY]);
 
   // ── Módulo 6: Restaurar borrador al montar ───────────────
   useEffect(() => {
@@ -511,7 +511,7 @@ function NuevaFacturaForm() {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) setShowDraftBanner(true);
     } catch { /* ignore */ }
-  }, []);
+  }, [DRAFT_KEY]);
 
   // ── Click outside para cerrar dropdowns ──────────────────
   useEffect(() => {
