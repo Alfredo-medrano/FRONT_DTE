@@ -60,19 +60,19 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
       const divisor = new Decimal(1).add(TASA_IVA); // 1.13
       
       // MH requiere que cantidad * precioUni == ventaGravada. Por tanto, ventaGravada INCLUYE IVA.
-      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ventaGravada = montoNeto.toDecimalPlaces(8, Decimal.ROUND_HALF_UP);
       
       // Calculamos el ivaItem (Monto - Monto/1.13) como información
-      const montoSinIva = montoNeto.div(divisor).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-      ivaItem = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).sub(montoSinIva);
+      const montoSinIva = montoNeto.div(divisor).toDecimalPlaces(8, Decimal.ROUND_HALF_UP);
+      ivaItem = montoNeto.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).sub(montoSinIva);
   } else if (tipoDte === '14' || tipoDte === '11') {
       precioUni = precioUnitario;
-      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ventaGravada = montoNeto.toDecimalPlaces(8, Decimal.ROUND_HALF_UP);
       ivaItem = new Decimal(0);
   } else {
       precioUni = precioUnitario;
-      ventaGravada = montoNeto.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-      ivaItem = montoNeto.mul(TASA_IVA).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      ventaGravada = montoNeto.toDecimalPlaces(8, Decimal.ROUND_HALF_UP);
+      ivaItem = montoNeto.mul(TASA_IVA).toDecimalPlaces(8, Decimal.ROUND_HALF_UP);
   }
 
   // DTE-15 (CD): campo donacion en lugar de ventaGravada/ivaItem
@@ -93,8 +93,8 @@ export const calcularLineaProducto = (item: any, numItem: number, tipoDte: strin
     numItem,
     tipoItem,
     cantidad: cantidad.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toNumber(),
-    precioUni: precioUni.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
-    montoDescu: descuento.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber(),
+    precioUni: precioUni.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toNumber(),
+    montoDescu: descuento.toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toNumber(),
     ventaGravada: ventaGravada.toNumber(),
     compra: tipoDte === '14' ? ventaGravada.toNumber() : 0,
     ivaItem: ivaItem.toNumber()

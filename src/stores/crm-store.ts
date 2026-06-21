@@ -48,6 +48,7 @@ interface CRMStore {
   moveCard: (cardId: string, toColumn: PipelineCard['columna']) => void;
   setSyncing: (v: boolean) => void;
   setLastSync: () => void;
+  syncClientes: () => Promise<void>;
 }
 
 export const useCRMStore = create<CRMStore>()(
@@ -63,9 +64,7 @@ export const useCRMStore = create<CRMStore>()(
       setLastSync: () => set({ lastSyncAt: Date.now() }),
 
       // BUG FIX (S5): addCliente ahora llama a la API y persiste en BD.
-      // El id viene del servidor para garantizar consistencia multi-device.
       addCliente: async (cli) => {
-        // Optimistic local insert
         const tempId = `local_${crypto.randomUUID()}`;
         const localCliente: Cliente = { ...cli, id: tempId, createdAt: Date.now(), _source: 'local' };
         set((state) => ({ clientes: [...state.clientes, localCliente] }));
@@ -76,13 +75,11 @@ export const useCRMStore = create<CRMStore>()(
             body: JSON.stringify(cli),
           });
           const serverCliente = { ...(resp.cliente ?? resp as any), createdAt: Date.now() };
-          // Reemplazar el cliente temporal con el del servidor
           set((state) => ({
             clientes: state.clientes.map((c) => c.id === tempId ? serverCliente : c),
           }));
           return serverCliente;
         } catch {
-          // Fallo de red: mantener local (_source: 'local')
           return localCliente;
         }
       },
@@ -91,7 +88,6 @@ export const useCRMStore = create<CRMStore>()(
         set((state) => ({
           clientes: state.clientes.map((c) => c.id === id ? { ...c, ...cli } : c),
         }));
-        // Solo sincronizar si no es un id temporal local
         if (!id.startsWith('local_') && !id.startsWith('temp_')) {
           try {
             const resp = await fetchClient<{ cliente: Cliente }>(`/api/dte/v2/clientes/${id}`, {
@@ -132,11 +128,35 @@ export const useCRMStore = create<CRMStore>()(
       moveCard: (id, toColumn) => set((state) => ({
         cards: state.cards.map((c) => c.id === id ? { ...c, columna: toColumn } : c)
       })),
+      
+      syncClientes: async () => {
+        set({ syncing: true });
+        try {
+          const resp = await fetchClient<{ data: Cliente[] }>('/api/dte/v2/clientes?limit=200');
+          const clientes = Array.isArray(resp) ? resp : (resp?.data ?? []);
+          set({ clientes, lastSyncAt: Date.now() });
+        } catch {
+          // Mantener caché local en caso de error
+        } finally {
+          set({ syncing: false });
+        }
+      },
     }),
     {
       name: 'dte-crm-storage',
+      version: 1, // Migración de versión para tarjetas legacy
+      migrate: (persistedState: any, version) => {
+        if (version === 0 || version === undefined) {
+          const emisorActual = useEmisorStore.getState().emisorId || 'default';
+          if (persistedState && persistedState.cards) {
+            persistedState.cards = persistedState.cards.map((c: PipelineCard) =>
+              c.emisorId ? c : { ...c, emisorId: emisorActual }
+            );
+          }
+        }
+        return persistedState;
+      },
       // Persistir solo cards (pipeline) y lastSyncAt en localStorage.
-      // Los clientes se re-sincronizan desde la API al montar el dashboard.
       partialize: (state) => ({
         cards: state.cards,
         lastSyncAt: state.lastSyncAt,
@@ -147,37 +167,16 @@ export const useCRMStore = create<CRMStore>()(
 
 /**
  * useCRMSync — Hook de sincronización CRM.
- * BUG FIX (S5): Reemplaza la dependencia exclusiva de localStorage.
- * Al montar el componente que use este hook, descarga los clientes
- * del servidor (GET /api/dte/v2/clientes) y actualiza el store local.
- * Retorna { syncing, lastSyncAt, refresh }.
  */
 export function useCRMSync() {
-  const setClientes = useCRMStore((s) => s.setClientes);
-  const setSyncing  = useCRMStore((s) => s.setSyncing);
-  const setLastSync = useCRMStore((s) => s.setLastSync);
+  const syncClientes = useCRMStore((s) => s.syncClientes);
   const syncing     = useCRMStore((s) => s.syncing);
   const lastSyncAt  = useCRMStore((s) => s.lastSyncAt);
 
-  const sync = async () => {
-    setSyncing(true);
-    try {
-      const resp = await fetchClient<{ data: Cliente[] }>('/api/dte/v2/clientes?limit=200');
-      const clientes = Array.isArray(resp) ? resp : (resp?.data ?? []);
-      setClientes(clientes);
-      setLastSync();
-    } catch {
-      // Sin conexión o error — mantener caché local del store
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   useEffect(() => {
-    sync();
+    syncClientes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { syncing, lastSyncAt, refresh: sync };
+  return { syncing, lastSyncAt, refresh: syncClientes };
 }
-

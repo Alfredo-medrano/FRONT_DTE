@@ -7,6 +7,7 @@ import { useIdleTimeout } from '@/hooks/use-idle-timeout';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { fetchClient } from '@/lib/api-client';
+import { useCRMStore } from '@/stores/crm-store';
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
 }) {
   const isReady = useAuthStore((state) => state.isReady);
   const setReady = useAuthStore((state) => state.setReady);
+  const syncClientes = useCRMStore((s) => s.syncClientes);
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -33,14 +35,16 @@ export default function DashboardLayout({
         const resp = await fetchClient<any>('/api/auth/me');
         if (resp?.exito) {
           setReady();
-        } else {
-          // Sin sesión válida → redirigir a login
-          router.push('/setup');
+          // Sincronizar clientes centralizadamente al verificar sesión exitosa
+          syncClientes();
         }
-      } catch {
-        router.push('/setup');
-      } finally {
         setChecking(false);
+      } catch (err: any) {
+        // Silencioso: fetchClient se encarga de redirigir a /setup en caso de 401.
+        // Si es 401, evitamos setChecking(false) para no disparar router.push('/setup') redundante.
+        if (err?.status !== 401) {
+          setChecking(false);
+        }
       }
     };
 
@@ -49,6 +53,8 @@ export default function DashboardLayout({
       checkSession();
     } else {
       setChecking(false);
+      // Sincronizar clientes centralizadamente si ya está listo
+      syncClientes();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

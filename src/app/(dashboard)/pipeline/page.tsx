@@ -7,16 +7,60 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, X, MoreVertical, FileText } from 'lucide-react';
+import { Plus, X, FileText, Edit2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const COLUMNAS = ['Prospecto', 'Contactado', 'Propuesta', 'Negociacion', 'Cerrado'] as const;
 
 export default function PipelinePage() {
-  const { cards, moveCard, addCard, deleteCard, clientes } = useCRMStore();
+  const { cards, moveCard, addCard, updateCard, deleteCard, clientes } = useCRMStore();
   const { emisorId } = useEmisorStore();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  // ── Estado del modal de creación/edición ──
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    clienteId: '',
+    titulo: '',
+    montoEstimado: 0,
+    columna: 'Prospecto' as PipelineCard['columna'],
+  });
+
+  const handleOpenCreate = () => {
+    if (clientes.length === 0) {
+      alert('Crea un cliente primero para agregar oportunidades');
+      return;
+    }
+    setEditingId(null);
+    setForm({ clienteId: clientes[0].id, titulo: '', montoEstimado: 0, columna: 'Prospecto' });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (card: PipelineCard) => {
+    setEditingId(card.id);
+    setForm({ 
+      clienteId: card.clienteId, 
+      titulo: card.titulo, 
+      montoEstimado: card.montoEstimado, 
+      columna: card.columna 
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleGuardar = () => {
+    if (!form.titulo.trim() || !form.clienteId) return;
+    if (editingId) {
+      updateCard(editingId, form);
+    } else {
+      addCard(form);
+    }
+    setIsModalOpen(false);
+  };
 
   // Filtrar tarjetas por el emisor actual
   const filteredCards = useMemo(() => {
@@ -56,19 +100,7 @@ export default function PipelinePage() {
           </div>
           <p className="text-muted-foreground">Flujo visual (Kanban) para tus oportunidades de negocio.</p>
         </div>
-        <Button onClick={() => {
-           // Quick add demo
-           if (clientes.length === 0) {
-              alert('Crea un cliente primero para agregar oportunidades');
-              return;
-           }
-           addCard({
-              clienteId: clientes[0].id,
-              titulo: 'Renovación de Servicios',
-              montoEstimado: 1500,
-              columna: 'Prospecto'
-           });
-        }}>
+        <Button onClick={handleOpenCreate}>
           <Plus className="h-4 w-4 mr-2" /> Nueva Oportunidad
         </Button>
       </div>
@@ -108,9 +140,14 @@ export default function PipelinePage() {
                                        <CardTitle className="text-sm font-semibold leading-tight">{card.titulo}</CardTitle>
                                        <span className="text-xs text-muted-foreground">{getClienteNombre(card.clienteId)}</span>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1 -mr-2 text-muted-foreground hover:text-destructive" onClick={() => deleteCard(card.id)}>
-                                       <X className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1 -mt-1 -mr-2">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => handleOpenEdit(card)}>
+                                         <Edit2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => deleteCard(card.id)}>
+                                         <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </CardHeader>
                                   <CardContent className="p-4 pt-2">
                                      <Badge variant="outline" className="text-primary bg-primary/10 border-primary/20">
@@ -139,6 +176,69 @@ export default function PipelinePage() {
           </div>
         </DragDropContext>
       </div>
+
+      {/* Modal de creación/edición de oportunidad */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Editar Oportunidad' : 'Nueva Oportunidad'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cliente">Cliente</Label>
+              <select
+                id="cliente"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={form.clienteId}
+                onChange={e => setForm({ ...form, clienteId: e.target.value })}
+              >
+                {clientes.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="titulo">Título de la Oportunidad</Label>
+              <Input 
+                id="titulo"
+                value={form.titulo} 
+                onChange={e => setForm({ ...form, titulo: e.target.value })} 
+                placeholder="Ej. Renovación de Servicios IT" 
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="monto">Monto Estimado (USD)</Label>
+              <Input 
+                id="monto"
+                type="number" 
+                value={form.montoEstimado} 
+                onChange={e => setForm({ ...form, montoEstimado: parseFloat(e.target.value) || 0 })} 
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="columna">Fase del Embudo</Label>
+              <select
+                id="columna"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={form.columna}
+                onChange={e => setForm({ ...form, columna: e.target.value as PipelineCard['columna'] })}
+              >
+                {COLUMNAS.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter className="flex justify-end gap-2 border-t pt-3">
+            <Button variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleGuardar} size="sm" disabled={!form.titulo.trim() || !form.clienteId}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCRMStore, useCRMSync, Cliente } from '@/stores/crm-store';
+import { useCRMStore, Cliente } from '@/stores/crm-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,18 +13,13 @@ import { useRouter } from 'next/navigation';
 import { DEPARTAMENTOS, getMunicipiosPorDepto, ACTIVIDADES_ECONOMICAS } from '@/lib/catalogos-mh';
 
 export default function ClientesPage() {
-  const { clientes, addCliente, updateCliente, deleteCliente } = useCRMStore();
-  // BUG FIX (S5): useCRMSync sincroniza clientes desde el servidor al montar.
-  // Ya no depende exclusivamente de localStorage (multi-device safe).
-  const { syncing: isSyncing, refresh: handleSyncAPI } = useCRMSync();
+  const { clientes, addCliente, updateCliente, deleteCliente, syncClientes, syncing: isSyncing } = useCRMStore();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const router = useRouter();
 
-  // handleSync ahora delega al useCRMSync hook que llama GET /api/dte/v2/clientes
-  // y reemplaza el store completo con datos del servidor (multi-device safe).
-  const handleSync = () => handleSyncAPI();
+  const handleSync = () => syncClientes();
 
   const [formData, setFormData] = useState<Partial<Cliente>>({
     nombre: '',
@@ -103,7 +98,6 @@ export default function ClientesPage() {
   };
 
   const handleFacturar = (cliente: Cliente) => {
-    // Navigate and pass query params or context to prepopulate the form
     router.push(`/facturas/nueva?cliente=${cliente.id}`);
   };
 

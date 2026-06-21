@@ -350,9 +350,7 @@ export default function MiEmpresaPage() {
 // ── Componente de Control de Contingencia ──
 
 function ContingenciaControlCard() {
-  const { data: state, mutate } = useAPI<any>('/api/dte/v2/mi-cuenta/contingencia', {
-    refreshInterval: 10000 // cada 10s
-  });
+  const { data: state, mutate } = useAPI<any>('/api/dte/v2/mi-cuenta/contingencia');
   const { mutate: globalMutate } = useSWRConfig();
 
   const [dialogOpen, setDialogOpen] = useState(false);
