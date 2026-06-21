@@ -118,8 +118,8 @@ export default function SetupPage() {
                   onChange={(e) => setAmbiente(e.target.value)}
                   disabled={loading}
                 >
-                  <option value="PRUEBAS">🧪 Pruebas</option>
-                  <option value="PRODUCCION">🟢 Producción</option>
+                  <option value="PRUEBAS">Pruebas</option>
+                  <option value="PRODUCCION">Producción</option>
                 </select>
               </div>
             </CardContent>

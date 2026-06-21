@@ -16,7 +16,7 @@ export interface PlanDTE {
   descripcion: string;
   features: string[];
   color: string; // Tailwind gradient class
-  iconEmoji: string;
+  iconName: string;
 }
 
 export const PLANES: PlanDTE[] = [
@@ -36,7 +36,7 @@ export const PLANES: PlanDTE[] = [
       'Reintentos automáticos',
     ],
     color: 'from-slate-500 to-slate-700',
-    iconEmoji: '🏪',
+    iconName: 'Store',
   },
   {
     id: 'PROFESIONAL',
@@ -55,7 +55,7 @@ export const PLANES: PlanDTE[] = [
       'Pipeline de ventas CRM',
     ],
     color: 'from-blue-500 to-indigo-600',
-    iconEmoji: '🏢',
+    iconName: 'Building2',
   },
   {
     id: 'EMPRESARIAL',
@@ -75,7 +75,7 @@ export const PLANES: PlanDTE[] = [
       'Integración contable',
     ],
     color: 'from-purple-500 to-violet-700',
-    iconEmoji: '🏛️',
+    iconName: 'Landmark',
   },
   {
     id: 'ILIMITADO',
@@ -96,7 +96,7 @@ export const PLANES: PlanDTE[] = [
       'Multi-ambiente (prueba + producción)',
     ],
     color: 'from-amber-500 to-orange-600',
-    iconEmoji: '🚀',
+    iconName: 'Rocket',
   },
 ];
 

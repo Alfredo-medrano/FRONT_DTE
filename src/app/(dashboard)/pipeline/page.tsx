@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, X, FileText, Edit2 } from 'lucide-react';
+import { Plus, X, FileText, Edit2, Database } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -94,8 +94,8 @@ export default function PipelinePage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h2 className="text-3xl font-bold tracking-tight">Pipeline de Ventas</h2>
-            <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 text-[11px] font-medium py-0.5 px-2">
-              💾 Local
+            <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 text-[11px] font-medium py-0.5 px-2 flex items-center gap-1.5">
+              <Database className="h-3.5 w-3.5" /> Local
             </Badge>
           </div>
           <p className="text-muted-foreground">Flujo visual (Kanban) para tus oportunidades de negocio.</p>

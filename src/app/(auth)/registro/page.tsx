@@ -26,6 +26,9 @@ import {
   ArrowLeft,
   Check,
   Crown,
+  Store,
+  Landmark,
+  Rocket,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,6 +39,13 @@ const STEPS = [
   { icon: KeyRound, label: 'Plan & MH' },
   { icon: CheckCircle2, label: 'Confirmar' },
 ];
+
+const PLAN_ICONS: Record<string, any> = {
+  BASICO: Store,
+  PROFESIONAL: Building2,
+  EMPRESARIAL: Landmark,
+  ILIMITADO: Rocket,
+};
 
 // ── NIT Mask helper ────────────────────────────
 function formatNIT(value: string): string {
@@ -397,8 +407,11 @@ export default function RegistroPage() {
                         )}
 
                         <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <span className="text-2xl mr-2">{plan.iconEmoji}</span>
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const IconComponent = PLAN_ICONS[plan.id];
+                              return IconComponent ? <IconComponent className="h-5 w-5 text-primary shrink-0 animate-in fade-in-50 duration-200" /> : null;
+                            })()}
                             <span className="font-bold text-lg">{plan.nombre}</span>
                           </div>
                           <div
@@ -517,7 +530,7 @@ export default function RegistroPage() {
                   label="Plan"
                   value={(() => {
                     const p = PLANES.find((pl) => pl.id === data.plan);
-                    return p ? `${p.iconEmoji} ${p.nombre} — ${p.precio}` : data.plan;
+                    return p ? `${p.nombre} — ${p.precio}` : data.plan;
                   })()}
                 />
                 <ConfirmRow label="Ambiente" value={data.ambiente === '00' ? 'Pruebas' : 'Producción'} />

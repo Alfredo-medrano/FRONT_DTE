@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Building2, Mail, Phone, MapPin, FileText, Edit2, Save, X, Shield, 
   AlertTriangle, Wifi, WifiOff, RefreshCw, CheckCircle2, Lock, ShieldAlert,
-  Upload, Loader2, Key, Trash2
+  Upload, Loader2, Key, Trash2, FlaskConical, Play
 } from 'lucide-react';
 import { useAPI } from '@/hooks/use-api';
 import { useEmisorStore } from '@/hooks/use-emisor';
@@ -163,7 +163,15 @@ export default function MiEmpresaPage() {
                           : 'text-green-600 bg-green-50 border-green-200'
                       }
                     >
-                      {empresa.ambiente === '00' || empresa.ambiente === 'PRUEBAS' ? '🧪 Pruebas' : '🟢 Producción'}
+                      {empresa.ambiente === '00' || empresa.ambiente === 'PRUEBAS' ? (
+                        <span className="flex items-center gap-1.5">
+                          <FlaskConical className="h-3 w-3" /> Pruebas
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5">
+                          <Play className="h-3 w-3 fill-current" /> Producción
+                        </span>
+                      )}
                     </Badge>
                   }
                 />
@@ -600,7 +608,12 @@ function ContingenciaControlCard() {
               <DialogDescription>
                 {actionType === 'activar' && 'El sistema dejará de conectarse temporalmente con Hacienda y firmará todas las facturas de forma local e instantánea.'}
                 {actionType === 'desactivar' && 'Se restaurará la operación normal. El sistema enviará el Evento de Contingencia detallando todos los DTEs emitidos durante este periodo y los transmitirá a Hacienda.'}
-                {actionType === 'limpiar' && '⚠️ Esta acción eliminará permanentemente todos los DTEs locales que están en cola en estado CONTINGENCIA y no han sido transmitidos a Hacienda. Esta operación no se puede deshacer.'}
+                {actionType === 'limpiar' && (
+                  <span className="flex items-start gap-1.5 text-red-500/90 font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                    Esta acción eliminará permanentemente todos los DTEs locales que están en cola en estado CONTINGENCIA y no han sido transmitidos a Hacienda. Esta operación no se puede deshacer.
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
 
