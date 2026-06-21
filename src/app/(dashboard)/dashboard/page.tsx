@@ -92,8 +92,9 @@ export default function DashboardPage() {
       {/* ── Bienvenida ──────────────────── */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight">
-            {saludo}{emisorName ? `, ${emisorName.split(' ')[0]}` : ''} 👋
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            {saludo}{emisorName ? `, ${emisorName.split(' ')[0]}` : ''}
+            <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
           </h2>
           <p className="text-muted-foreground text-sm">
             Aquí tienes un resumen de tu facturación de este mes.
